@@ -1,0 +1,411 @@
+/* ==========================================================================
+   PRICEPULSE — DESIGN SYSTEM
+   Premium / minimal / futuristic. One accent, neutral surfaces, restrained motion.
+   Load this BEFORE styles.css — legacy variable names in styles.css point here.
+   ========================================================================== */
+
+:root {
+  /* ---------- Color: base surfaces ---------- */
+  --bg: #08080a;
+  --bg-elevated: #0c0c0f;
+  --surface: #111114;
+  --surface-2: #17171b;
+  --card: #131316;
+  --card-hover: #19191d;
+  --glass-surface: rgba(255, 255, 255, 0.04);
+  --glass-surface-strong: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  /* ---------- Color: brand / accent (single accent system) ---------- */
+  --primary: #6e56cf;
+  --primary-hover: #7c67e0;
+  --primary-active: #5d47b8;
+  --primary-dim: rgba(110, 86, 207, 0.16);
+  --primary-glow: rgba(110, 86, 207, 0.45);
+  --secondary: #a1a1aa;
+  --accent: #6e56cf;
+  --accent-light: #9c8bf0;
+
+  /* ---------- Color: semantic ---------- */
+  --success: #22c55e;
+  --success-dim: rgba(34, 197, 94, 0.14);
+  --warning: #f5a524;
+  --warning-dim: rgba(245, 165, 36, 0.14);
+  --error: #f0455e;
+  --error-dim: rgba(240, 69, 94, 0.14);
+
+  /* ---------- Color: text ---------- */
+  --text-primary: #f5f5f7;
+  --text-secondary: #a8a8b3;
+  --text-muted: #6c6c76;
+  --text-on-accent: #ffffff;
+
+  /* ---------- Color: interaction states ---------- */
+  --state-hover: rgba(255, 255, 255, 0.06);
+  --state-active: rgba(255, 255, 255, 0.1);
+  --state-focus: rgba(110, 86, 207, 0.45);
+
+  /* ---------- Typography ---------- */
+  --font-primary: 'Manrope', 'Inter', system-ui, -apple-system, sans-serif;
+
+  --text-hero: clamp(2.1rem, 7vw, 3.25rem);
+  --text-heading: clamp(1.4rem, 4vw, 1.75rem);
+  --text-subheading: 1rem;
+  --text-card-title: 1.05rem;
+  --text-body: 0.9375rem;
+  --text-caption: 0.8rem;
+  --text-button: 0.9rem;
+  --text-label: 0.72rem;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.55;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-widest: 0.14em;
+
+  /* ---------- Spacing (8pt system) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ---------- Radius ---------- */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-full: 999px;
+
+  /* ---------- Shadow ---------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 0 1px rgba(110, 86, 207, 0.25), 0 8px 30px rgba(110, 86, 207, 0.25);
+
+  /* ---------- Icon sizing ---------- */
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
+  --icon-xl: 32px;
+
+  /* ---------- Motion ---------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 0.15s;
+  --dur-base: 0.3s;
+  --dur-slow: 0.5s;
+}
+
+/* ==========================================================================
+   ANIMATION LIBRARY — subtle, reusable
+   ========================================================================== */
+
+@keyframes ds-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes ds-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ds-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ds-blur-in {
+  from { opacity: 0; filter: blur(8px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
+@keyframes ds-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(110, 86, 207, 0.35); }
+  50%      { box-shadow: 0 0 24px 4px rgba(110, 86, 207, 0.25); }
+}
+
+@keyframes ds-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes ds-float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50%      { transform: translateY(-14px) translateX(6px); }
+}
+
+@keyframes ds-ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+
+@keyframes ds-skeleton {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.ds-fade-in   { animation: ds-fade-in var(--dur-slow) var(--ease-out) both; }
+.ds-slide-up  { animation: ds-slide-up var(--dur-slow) var(--ease-out) both; }
+.ds-scale-in  { animation: ds-scale-in var(--dur-base) var(--ease-spring) both; }
+.ds-blur-in   { animation: ds-blur-in var(--dur-slow) var(--ease-out) both; }
+
+/* Stagger helper — apply .ds-stagger to a container, children fade up in sequence */
+.ds-stagger > * {
+  animation: ds-slide-up var(--dur-slow) var(--ease-out) both;
+}
+.ds-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.ds-stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.ds-stagger > *:nth-child(3) { animation-delay: 0.19s; }
+.ds-stagger > *:nth-child(4) { animation-delay: 0.26s; }
+.ds-stagger > *:nth-child(5) { animation-delay: 0.33s; }
+.ds-stagger > *:nth-child(6) { animation-delay: 0.4s; }
+
+.ds-skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--card-hover) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: ds-skeleton 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm);
+}
+
+/* ==========================================================================
+   TYPOGRAPHY SCALE — utility classes
+   ========================================================================== */
+
+.ds-hero {
+  font-size: var(--text-hero);
+  font-weight: var(--weight-extrabold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+}
+.ds-heading {
+  font-size: var(--text-heading);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+}
+.ds-subheading {
+  font-size: var(--text-subheading);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+.ds-card-title {
+  font-size: var(--text-card-title);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+.ds-body {
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+.ds-caption {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+.ds-label {
+  font-size: var(--text-label);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   BUTTON SYSTEM
+   ========================================================================== */
+
+.ds-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 48px;
+  padding: 0 var(--space-6);
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  font-family: var(--font-primary);
+  font-size: var(--text-button);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-normal);
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform var(--dur-fast) var(--ease-spring),
+              box-shadow var(--dur-base) var(--ease-standard),
+              background var(--dur-base) var(--ease-standard),
+              border-color var(--dur-base) var(--ease-standard),
+              opacity var(--dur-base) var(--ease-standard);
+}
+.ds-btn:active { transform: scale(0.97); }
+.ds-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--state-focus); }
+
+.ds-btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-active));
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-md);
+}
+.ds-btn-primary:hover {
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary));
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
+}
+
+.ds-btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.ds-btn-secondary:hover { background: var(--card-hover); border-color: var(--border-strong); }
+
+.ds-btn-outline {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.ds-btn-outline:hover { background: var(--state-hover); border-color: var(--primary); }
+
+.ds-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.ds-btn-ghost:hover { background: var(--state-hover); color: var(--text-primary); }
+
+.ds-btn-danger {
+  background: var(--error-dim);
+  color: var(--error);
+  border-color: rgba(240, 69, 94, 0.3);
+}
+.ds-btn-danger:hover { background: rgba(240, 69, 94, 0.22); }
+
+.ds-btn:disabled,
+.ds-btn.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ds-btn.is-loading { color: transparent; pointer-events: none; }
+.ds-btn.is-loading::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: ds-spin 0.7s linear infinite;
+}
+@keyframes ds-spin { to { transform: rotate(360deg); } }
+
+/* Button glow sweep on hover */
+.ds-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.6s var(--ease-standard);
+  z-index: -1;
+}
+.ds-btn-primary:hover::before { transform: translateX(100%); }
+
+/* ==========================================================================
+   INPUT SYSTEM
+   ========================================================================== */
+
+.ds-field { position: relative; width: 100%; }
+
+.ds-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 var(--space-5);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: var(--text-body);
+  transition: border-color var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard),
+              background var(--dur-base) var(--ease-standard);
+}
+.ds-input::placeholder { color: var(--text-muted); transition: opacity var(--dur-base); }
+.ds-input:focus { outline: none; }
+.ds-input:focus::placeholder { opacity: 0.5; }
+
+.ds-input:hover { border-color: var(--border-strong); }
+.ds-input:focus {
+  border-color: var(--primary);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px var(--state-focus);
+}
+
+.ds-input.is-success { border-color: var(--success); }
+.ds-input.is-success:focus { box-shadow: 0 0 0 4px var(--success-dim); }
+.ds-input.is-error { border-color: var(--error); }
+.ds-input.is-error:focus { box-shadow: 0 0 0 4px var(--error-dim); }
+
+/* ==========================================================================
+   CARD SYSTEM
+   ========================================================================== */
+
+.ds-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-base) var(--ease-spring),
+              box-shadow var(--dur-base) var(--ease-standard),
+              border-color var(--dur-base) var(--ease-standard),
+              background var(--dur-base) var(--ease-standard);
+}
+.ds-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  background: var(--card-hover);
+}
+
+.ds-card-glass {
+  background: var(--glass-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+.ds-card-glass:hover { background: var(--glass-surface-strong); border-color: var(--border-strong); }
+
+/* ==========================================================================
+   MISC UTILITIES
+   ========================================================================== */
+
+.ds-glass-nav {
+  background: rgba(8, 8, 10, 0.6);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+}
+
+.ds-icon { width: var(--icon-md); height: var(--icon-md); }

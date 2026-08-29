@@ -1,0 +1,23 @@
+{
+  "name": "pricepulse",
+  "version": "1.0.0",
+  "description": "A premium price comparison app — compare real-time prices across Amazon, Flipkart, Myntra, Ajio and more.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.19.0",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "openai": "^7.3.0"
+  }
+}

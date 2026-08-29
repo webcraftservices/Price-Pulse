@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PricePulse — Compare. Save. Shop Smarter.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/design-system.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="assets/logo.png" type="image/png" />
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash" class="splash">
+    <div class="splash-inner">
+      <div class="splash-logo-wrap">
+        <div class="pulse-ring pulse-ring-1"></div>
+        <div class="pulse-ring pulse-ring-2"></div>
+        <div class="pulse-ring pulse-ring-3"></div>
+        <img src="assets/logo.png" alt="PricePulse" class="splash-logo" />
+      </div>
+      <h1 class="splash-title">
+        <span class="splash-title-text">Price</span><span class="splash-title-accent">Pulse</span>
+      </h1>
+      <p class="splash-tagline">Compare · Save · Shop Smarter</p>
+      <div class="splash-loader">
+        <div class="splash-loader-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app" class="app hidden">
+    <div class="bg-orbs" aria-hidden="true">
+      <span class="orb orb-a"></span>
+      <span class="orb orb-b"></span>
+      <span class="orb orb-c"></span>
+    </div>
+
+    <!-- Home View -->
+    <section id="view-home" class="view view-active">
+      <header class="home-header">
+        <img src="assets/logo.png" alt="" class="home-logo" />
+        <div class="home-logo-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.41 20.59a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><path d="M7 7h.01"/><path d="M9 13l2 2 4-4" stroke-width="1.6"/></svg>
+        </div>
+        <div class="home-brand-wrap">
+          <h2 class="home-greeting">Welcome to</h2>
+          <h1 class="home-brand">Price<span>Pulse</span></h1>
+        </div>
+        <div class="ai-status-pill"><span class="ai-status-dot"></span>AI Online</div>
+      </header>
+
+      <div class="home-hero">
+        <div class="home-hero-shapes" aria-hidden="true">
+          <span class="hs-ring"></span>
+          <span class="hs-ring hs-ring-2"></span>
+          <span class="hs-circle-1"></span>
+          <span class="hs-circle-2"></span>
+          <span class="hs-star hs-star-1">✦</span>
+          <span class="hs-star hs-star-2">✦</span>
+        </div>
+
+        <span class="home-hero-eyebrow">Your personal shopping assistant</span>
+        <h1 class="home-hero-title">Shop smarter.<br /><em>Save more.</em></h1>
+
+        <div class="home-feature-line">
+          <span class="hfl-item hfl-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.41 20.59a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><path d="M7 7h.01"/></svg>Compare prices</span>
+          <span class="hfl-sep">•</span>
+          <span class="hfl-item hfl-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Discover products</span>
+          <span class="hfl-sep">•</span>
+          <span class="hfl-item hfl-orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Track spend</span>
+        </div>
+
+        <p class="home-subtitle">All in one premium companion.</p>
+      </div>
+
+      <nav class="home-nav">
+        <button class="nav-card" data-route="compare" aria-label="Compare Prices">
+          <div class="nav-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/><path d="M10 6.5h4M6.5 10v4M17.5 10v4M10 17.5h4" stroke-linecap="round"/></svg>
+          </div>
+          <div class="nav-card-content">
+            <h3>Compare Prices</h3>
+            <p>Track real-time prices across platforms</p>
+          </div>
+          <div class="nav-card-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+          <span class="ripple"></span>
+        </button>
+
+        <button class="nav-card" data-route="find" aria-label="Find Products">
+          <div class="nav-card-icon nav-card-icon-ai">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          </div>
+          <div class="nav-card-content">
+            <h3>Find Products</h3>
+            <p>AI-powered visual product search</p>
+          </div>
+          <div class="nav-card-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+          <span class="ripple"></span>
+        </button>
+
+        <button class="nav-card" data-route="spend" aria-label="Spend Lens">
+          <div class="nav-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 5-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="nav-card-content">
+            <h3>Spend Lens</h3>
+            <p>Insights into your shopping spend</p>
+          </div>
+          <div class="nav-card-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+          <span class="ripple"></span>
+        </button>
+      </nav>
+
+      <footer class="home-footer">
+        <div class="trust-grid">
+          <div class="trust-item">
+            <div class="trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+            <span>Real-time</span>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <span>Secure</span>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.8 6.7L20 10l-6.2 1.3L12 18l-1.8-6.7L4 10l6.2-1.3z"/></svg></div>
+            <span>AI-Powered</span>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
+            <span>Multi-Platform</span>
+          </div>
+        </div>
+      </footer>
+    </section>
+
+    <!-- Compare View -->
+    <section id="view-compare" class="view view-sub compare-light">
+      <header class="cp-header">
+        <button class="cp-back-btn" data-back aria-label="Go back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="home-logo-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.41 20.59a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><path d="M7 7h.01"/><path d="M9 13l2 2 4-4" stroke-width="1.6"/></svg>
+        </div>
+        <div class="home-brand-wrap">
+          <h1 class="home-brand">Price<span>Pulse</span></h1>
+        </div>
+        <div class="ai-status-pill"><span class="ai-status-dot"></span>AI Online</div>
+      </header>
+
+      <div class="cp-hero">
+        <span class="cp-eyebrow">Compare Prices</span>
+        <h1 class="cp-title">Find the best price<br />before you buy.</h1>
+        <p class="cp-subtitle">Compare prices across trusted stores in seconds.</p>
+      </div>
+
+      <!-- Primary URL input card -->
+      <div class="cp-input-card">
+        <label class="cp-input-card-label" for="compare-url">Paste product link</label>
+        <div class="cp-input-wrap">
+          <svg class="cp-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 13a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L10 5.51" stroke-linecap="round"/><path d="M14 11a5 5 0 00-7.07 0L5.51 12.41a5 5 0 007.07 7.07L14 18.49" stroke-linecap="round"/></svg>
+          <input type="url" id="compare-url" class="cp-url-input" placeholder="e.g. https://amazon.in/dp/product-id…" autocomplete="off" />
+        </div>
+        <button id="compare-btn" class="cp-cta-btn">
+          <span>Compare Prices</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+
+        <div class="cp-or-divider"><span>or search for a product</span></div>
+
+        <div class="cp-text-wrap">
+          <svg class="cp-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5" stroke-linecap="round"/></svg>
+          <input type="text" id="compare-text" class="cp-text-input" placeholder="Search headphones, iPhone, laptop…" autocomplete="off" />
+          <button type="button" id="compare-text-btn" class="cp-text-btn" aria-label="Search product">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent comparisons (real, on-device history — populated after you compare something) -->
+      <div class="cp-section">
+        <div class="cp-section-head"><span class="cp-section-label">Recent comparisons</span></div>
+        <div id="cp-recent" class="cp-recent-row"></div>
+      </div>
+
+      <!-- Quick-start examples — reuse the existing text-search API, not fake data -->
+      <div class="cp-section">
+        <div class="cp-section-head"><span class="cp-section-label">Try a quick comparison</span></div>
+        <div class="cp-quick-row">
+          <button type="button" class="cp-quick-chip" data-query="iPhone 15">iPhone 15</button>
+          <button type="button" class="cp-quick-chip" data-query="Sony headphones">Sony headphones</button>
+          <button type="button" class="cp-quick-chip" data-query="MacBook Air">MacBook Air</button>
+          <button type="button" class="cp-quick-chip" data-query="Nike Air Jordan">Nike Air Jordan</button>
+        </div>
+      </div>
+
+      <div id="compare-loading" class="cp-loading hidden">
+        <div class="cp-scan-line"></div>
+        <p>Scanning platforms in real-time…</p>
+        <div class="cp-platform-dots">
+          <span data-platform="Amazon">Amazon</span>
+          <span data-platform="Flipkart">Flipkart</span>
+          <span data-platform="Myntra">Myntra</span>
+          <span data-platform="Ajio">Ajio</span>
+        </div>
+      </div>
+
+      <div id="compare-results" class="cp-results hidden"></div>
+
+      <!-- Phase 8.1 (spec Section 22): bottom navigation removed from this
+           view only — it duplicated Home/Compare/Spend Lens navigation
+           that already exists on the Home view's nav-cards. Confirmed via
+           repo-wide search that <nav class="bottom-nav"> was only ever
+           rendered here (view-find/view-spend never had one either), so
+           no other view or shared component was affected by this removal. -->
+    </section>
+
+    <!-- Find View -->
+    <section id="view-find" class="view view-sub find-light">
+      <header class="find-header">
+        <button class="find-back-btn" data-back aria-label="Go back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="home-logo-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.41 20.59a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><path d="M7 7h.01"/><path d="M9 13l2 2 4-4" stroke-width="1.6"/></svg>
+        </div>
+        <div class="home-brand-wrap">
+          <h1 class="home-brand">Price<span>Pulse</span></h1>
+        </div>
+        <div class="ai-status-pill"><span class="ai-status-dot"></span>AI Online</div>
+      </header>
+
+      <div class="find-hero">
+        <span class="find-eyebrow">AI Find</span>
+        <h1 class="find-title">Find Products Instantly</h1>
+        <p class="find-subtitle">Snap, upload, or describe — AI finds it all</p>
+      </div>
+
+      <div class="find-orb-cluster" id="find-orb-cluster">
+        <div class="orb-stage">
+          <button type="button" class="orb-side-card find-transient" id="take-photo-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Take Photo</span>
+          </button>
+
+          <div class="orb-system" id="upload-zone">
+
+            <!-- Ambient background glow — static, purely decorative -->
+            <div class="orb-energy-back" aria-hidden="true"></div>
+
+            <!-- Video stack: idle / searching / result, identical position & size.
+                 Only .active (opacity) changes — JS never moves/resizes anything.
+                 All three autoplay+loop from page load so crossfades never show a
+                 frozen first frame; poster=orb.png as a fallback while loading. -->
+            <div class="orb-video-stack" id="orb-video-stack">
+              <video class="orb-video active" id="orb-video-idle"
+                     src="assets/ai-orb-idle.mp4" poster="assets/orb.png"
+                     autoplay muted loop playsinline></video>
+              <video class="orb-video" id="orb-video-searching"
+                     src="assets/ai-orb-searching.mp4"
+                     autoplay muted loop playsinline></video>
+              <video class="orb-video" id="orb-video-result"
+                     src="assets/ai-orb-result.mp4"
+                     autoplay muted loop playsinline></video>
+            </div>
+
+            <div class="orb-core">
+              <span class="orb-ai" id="orb-ai-label">AI</span>
+              <svg class="orb-check" id="orb-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span class="orb-caption" id="orb-caption">Ready to help…</span>
+            </div>
+          </div>
+
+          <button type="button" class="orb-side-card find-transient" id="upload-image-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Upload Image</span>
+          </button>
+        </div>
+
+        <input type="file" id="image-input" accept="image/*" hidden />
+        <p class="upload-placeholder-hint find-transient" id="upload-placeholder">Choose a photo above, or describe it below</p>
+
+        <div class="selected-image-card hidden" id="upload-preview">
+          <img id="preview-img" alt="Uploaded product" />
+          <div class="scan-overlay" aria-hidden="true">
+            <span class="scan-corner tl"></span>
+            <span class="scan-corner tr"></span>
+            <span class="scan-corner bl"></span>
+            <span class="scan-corner br"></span>
+            <span class="scan-sweep"></span>
+            <span class="scan-particle p1"></span>
+            <span class="scan-particle p2"></span>
+            <span class="scan-particle p3"></span>
+          </div>
+          <button class="clear-upload" id="clear-upload" aria-label="Remove image">×</button>
+        </div>
+
+        <button
+      type="button"
+      id="search-btn"
+      class="action-btn hidden">
+      <span>Search with AI</span>
+  </button>
+
+        <div class="describe-bar find-transient">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 6.7L20 12l-6.2 1.3L12 20l-1.8-6.7L4 12l6.2-1.3z"/></svg>
+          <input type="text" class="describe-input" id="describe-input" placeholder="Or describe what you're looking for…" />
+          <button type="button" class="describe-submit" id="describe-submit" aria-label="Search by description">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+
+        <div class="suggestion-chips find-transient">
+          <span class="suggestion-label">Try these searches</span>
+          <div class="suggestion-chip-row">
+            <button type="button" class="suggestion-chip">iPhone 16 Pro</button>
+            <button type="button" class="suggestion-chip">Nike Air Jordan</button>
+            <button type="button" class="suggestion-chip">MacBook Air</button>
+            <button type="button" class="suggestion-chip">Sony Headphones</button>
+            <button type="button" class="suggestion-chip">Dyson Vacuum</button>
+            <button type="button" class="suggestion-chip">Samsung TV</button>
+          </div>
+        </div>
+
+        <div id="find-loading" class="find-loading hidden">
+          <div class="ai-thinking" aria-hidden="true"><span></span><span></span><span></span></div>
+          <p id="find-status">Analyzing image with AI…</p>
+          <div class="ai-progress-track"><div class="ai-progress-bar"></div></div>
+        </div>
+      </div>
+
+      <div id="find-results" class="find-results hidden"></div>
+    </section>
+
+    <!-- Spend View -->
+    <section id="view-spend" class="view view-sub">
+      <header class="sub-header">
+        <button class="back-btn" data-back aria-label="Go back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="sub-header-label">Spend Lens</span>
+      </header>
+
+      <div class="spend-hero">
+        <h1 class="sub-title">Your Shopping Insights</h1>
+        <p class="sub-desc">Connect platforms to track spending across stores</p>
+      </div>
+
+      <div class="connect-grid" id="connect-grid">
+        <button class="connect-card" data-platform="amazon">
+          <div class="connect-logo amazon">a</div>
+          <span>Amazon</span>
+          <div class="connect-status">Connect</div>
+        </button>
+        <button class="connect-card" data-platform="flipkart">
+          <div class="connect-logo flipkart">f</div>
+          <span>Flipkart</span>
+          <div class="connect-status">Connect</div>
+        </button>
+        <button class="connect-card" data-platform="myntra">
+          <div class="connect-logo myntra">M</div>
+          <span>Myntra</span>
+          <div class="connect-status">Connect</div>
+        </button>
+        <button class="connect-card" data-platform="ajio">
+          <div class="connect-logo ajio">A</div>
+          <span>Ajio</span>
+          <div class="connect-status">Connect</div>
+        </button>
+      </div>
+
+      <div id="spend-dashboard" class="spend-dashboard hidden">
+        <div class="spend-summary">
+          <div class="spend-stat">
+            <span class="spend-stat-label">Total Spend</span>
+            <span class="spend-stat-value" id="total-spend">₹0</span>
+          </div>
+          <div class="spend-stat">
+            <span class="spend-stat-label">This Month</span>
+            <span class="spend-stat-value" id="month-spend">₹0</span>
+          </div>
+          <div class="spend-stat">
+            <span class="spend-stat-label">Platforms</span>
+            <span class="spend-stat-value" id="connected-count">0</span>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <h3>Spending Overview</h3>
+          <canvas id="spend-chart"></canvas>
+        </div>
+
+        <div class="transactions-wrap">
+          <h3>Recent Transactions</h3>
+          <div id="transactions-list" class="transactions-list"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/compare.js"></script>
+  <script src="js/find.js"></script>
+  <script src="js/spend.js"></script>
+</body>
+</html>
