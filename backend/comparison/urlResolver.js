@@ -138,6 +138,20 @@ function isEnabled() {
 // hardcoding "/product/", "/dp/", etc. as universal truth — merchants use
 // wildly different URL schemes). Rejects only the shapes that are reliably
 // NOT a single product's detail page, regardless of merchant.
+//
+// Phase 11 precision fix ("Direct Store URL Precision Fix"): a live
+// 20-product/274-offer test found the resolver accepting pages that are
+// on the correct merchant domain, textually relevant, and NOT a
+// search/category page by the checks above — but are still not a
+// purchasable product page. Two concrete shapes were observed:
+//   - editorial/content pages, e.g. croma.com/unboxed/10-settings-to-...
+//     and reliancedigital.in/c/resource-center/bg/lenovo-ideapad-...
+//   - brand storefront pages, e.g. amazon.in/stores/DellIndia/page/...
+//     (a whole-brand landing page, not one product)
+// Both are additive exclusions, matched on path segments (not arbitrary
+// substrings) so a legitimate product slug that happens to contain one of
+// these words elsewhere isn't caught — e.g. a product literally named
+// "news" would not trip this unless "news" is itself a path segment.
 function looksLikeGenericOrSearchPage(url) {
     let parsed;
     try {
@@ -151,16 +165,65 @@ function looksLikeGenericOrSearchPage(url) {
     // Common search/listing query params ("?q=", "?query=", "?k=" on
     // Amazon-style search URLs) mean this is a results page, not a product.
     if (["q", "query", "k", "search"].some((p) => parsed.searchParams.has(p))) return true;
+    // Editorial/content pages (Phase 11): blog posts, buying guides, news
+    // articles, and generic "resource center" hubs. Matched as whole path
+    // segments so a real merchant path segment isn't accidentally caught
+    // by a substring (e.g. "/unboxed/" is a segment, not a substring test).
+    if (/\/(unboxed|resource-center|resources?|blogs?|guides?|news|articles?)(\/|$)/i.test(path)) return true;
+    // Brand/manufacturer storefront pages (Phase 11): a whole-brand landing
+    // page, not a single product — e.g. amazon.in/stores/DellIndia/page/...
+    // Deliberately narrow (requires the /stores/<brand>/page/ shape, not a
+    // bare "/stores/" anywhere) to avoid rejecting an unrelated merchant's
+    // legitimate path that happens to contain the word "stores".
+    if (/\/stores\/[^/]+\/page(\/|$)/i.test(path)) return true;
+    // Dated CMS/editorial URLs (Phase 13): a live test found a genuine
+    // blog article — cutetechgadgets.com/2024/03/10/on-the-spotlight-...
+    // — accepted as a direct product URL because it contained no /blog/
+    // or /news/ segment at all; it's a WordPress-style dated post path
+    // instead. Anchored to require /YYYY/MM(/DD)?/ followed by a further
+    // segment (the slug) so it only matches genuine dated-post shapes,
+    // not an arbitrary numeric ID anywhere in a product path (a bare
+    // "/product/1234/2024" with nothing after the year is NOT matched —
+    // there's no following "/MM" segment, let alone a slug after that).
+    if (/\/(19|20)\d{2}\/(0[1-9]|1[0-2])(?:\/(0[1-9]|[12]\d|3[01]))?\/[^/]+/i.test(path)) return true;
+    // Sell / trade-in / buyback pages (Phase 13): a live test found
+    // cashify.in/sell-old-laptop/used-dell-xps-13 accepted as a direct
+    // "buy" URL when it's actually the merchant's own device-trade-in
+    // intake page — the reverse transaction. Matched only when "sell"
+    // (optionally hyphen-suffixed, e.g. "sell-old-laptop"), "trade-in",
+    // "tradein", or "buyback" is an entire path SEGMENT starting right
+    // after a "/" — so a product slug that merely contains "sell" as
+    // part of a longer word (e.g. "/products/best-seller-headphones")
+    // is untouched, since that segment doesn't begin with "sell".
+    if (/\/(sell(?:-[a-z0-9-]+)?|trade-in|tradein|buyback)(?:\/|$)/i.test(path)) return true;
     return false;
 }
 
 // MEDIUM-confidence path only (the HIGH-confidence allowlist path already
 // trusts its domain via belongsToDomain — a pre-vetted, hand-curated
-// domain, not a guess). Fuzzy, deliberately conservative: the merchant
-// name's own significant tokens (>=3 chars, so "of"/"& "-type noise is
-// ignored) must substantially appear in the resolved URL's own hostname
-// label. This is verification of what Serper's search independently
-// found — never a guess at what the domain "should" be (Phase 18).
+// domain, not a guess). Deliberately conservative: the merchant name's
+// FULL normalized form (not an individual token) must relate to the
+// resolved URL's own hostname label as a contiguous unit — one must
+// contain the other. This is verification of what Serper's search
+// independently found — never a guess at what the domain "should" be
+// (Phase 18).
+//
+// Phase 13 hardening: the previous version matched on individual tokens
+// (>=3 chars) found anywhere inside the hostname label, which let a
+// short, common token slip through against an unrelated real domain —
+// a live test found "Shopy Vision" (tokens ["shopy","vision"]) passing
+// against "datavision.com" purely because "vision" is a substring of
+// "datavision", even though the two names share nothing else. Matching
+// on the full concatenated name instead of loose tokens keeps the
+// legitimate cases this function exists for (a merchant name that's an
+// exact or near-exact match for the hostname label, e.g. "MRV
+// electronics" -> mrvelectronics.in, or "Harsha" -> harshaindia.com,
+// where the merchant name is a genuine prefix/substring of the real
+// hostname) while rejecting the disjoint-token coincidence above.
+function normalizeForHostnameCompare(str) {
+    return String(str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function merchantNameMatchesHostname(merchantName, url) {
     let hostname;
     try {
@@ -168,17 +231,20 @@ function merchantNameMatchesHostname(merchantName, url) {
     } catch {
         return false;
     }
-    const hostLabel = hostname.split(".")[0].toLowerCase();
-    const tokens = normalizeMerchantKey(merchantName)
-        .split(/[^a-z0-9]+/)
-        .filter((t) => t.length >= 3);
-    if (tokens.length === 0) return false;
-    const matched = tokens.filter((t) => hostLabel.includes(t));
-    // Require at least half the significant tokens (rounding up) AND at
-    // least one — "MRV electronics" -> ["mrv","electronics"], hostname
-    // "mrvelectronics.in" matches both; a totally unrelated hostname
-    // matches zero and is correctly rejected.
-    return matched.length > 0 && matched.length >= Math.ceil(tokens.length / 2);
+    const hostLabel = normalizeForHostnameCompare(hostname.split(".")[0]);
+    const merchantConcat = normalizeForHostnameCompare(merchantName);
+    if (!hostLabel || !merchantConcat) return false;
+    // Very short names/labels: substring containment is unreliable at
+    // this length (almost anything "contains" a 1-2 char string), so
+    // require exact equality instead. 5 is short enough to still cover
+    // real short brand names ("Jio", "Boat"→"boat") via the equality
+    // branch, while any genuine substring relationship at this length
+    // would be coincidental.
+    const MIN_LENGTH_FOR_SUBSTRING_MATCH = 5;
+    if (merchantConcat.length < MIN_LENGTH_FOR_SUBSTRING_MATCH || hostLabel.length < MIN_LENGTH_FOR_SUBSTRING_MATCH) {
+        return merchantConcat === hostLabel;
+    }
+    return hostLabel.includes(merchantConcat) || merchantConcat.includes(hostLabel);
 }
 
 /**
@@ -233,8 +299,22 @@ async function resolveDirectMerchantUrlDetailed(merchantName, canonicalQuery, { 
             for (const candidate of organic) {
                 if (!candidate.link) continue;
                 if (!isSafeExternalUrl(candidate.link)) continue; // Phase 11 safety (also excludes Google hosts)
-                if (!merchantNameMatchesHostname(merchantName, candidate.link)) continue; // Phase 8
-                if (looksLikeGenericOrSearchPage(candidate.link)) continue; // Phase 7
+                // Phase 11 region/TLD consistency: if the registry already
+                // knows this merchant's canonical domain (e.g. Amazon ->
+                // amazon.in), the MEDIUM path must not accept a different
+                // country/TLD variant (amazon.com, amazon.co.uk, ...) just
+                // because merchantNameMatchesHostname's fuzzy token check
+                // would otherwise pass it — a live test found exactly this
+                // ("Amazon" resolving to amazon.com for an India-targeted
+                // comparison). Merchants with NO registered domain are
+                // unaffected — fuzzy hostname matching is still the only
+                // signal available for them, unchanged from before.
+                if (domain) {
+                    if (!belongsToDomain(candidate.link, domain)) continue;
+                } else if (!merchantNameMatchesHostname(merchantName, candidate.link)) { // Phase 8
+                    continue;
+                }
+                if (looksLikeGenericOrSearchPage(candidate.link)) continue; // Phase 7 / Phase 11
                 const relevanceText = [candidate.title, candidate.snippet].filter(Boolean).join(" ");
                 if (matchValidator && !matchValidator(relevanceText)) continue; // Phase 9
                 result = { url: candidate.link, confidence: "medium" };
