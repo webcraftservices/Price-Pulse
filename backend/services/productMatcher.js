@@ -14,13 +14,16 @@
  * and tests.
  */
 
-const { normalizeTitle, tokenize, jaccardOverlap, looksLikeAccessory } = require("../utils/text");
+const { normalizeTitle, tokenize, jaccardOverlap, looksLikeAccessory, detectColor } = require("../utils/text");
 const {
     extractStorageTokens,
     extractRamAndStorage,
     extractModelNumberTokens,
     extractPlainModelNumbers,
     extractVariantSuffixes,
+    extractAlnumModelCodes,
+    leadingDigitRun,
+    leadingLetterPrefix,
 } = require("../utils/numbers");
 const { classifyProductType, detectProductTypeConflict } = require("../comparison/productTypeClassifier");
 
@@ -89,6 +92,41 @@ function evaluateProductIdentity(sourceProduct, candidateTitle) {
  * "variant_mismatch") so downstream consumers/tests that already key off
  * these strings keep working unchanged.
  */
+// Phase 14 (Wrong-Variant Root Cause Fix) — Fix D helper: groups
+// letter-first model tokens ("r530", "buds3") by their leading letter
+// prefix ("r" -> {530}, "buds" -> {3}) so a genuine conflict on one
+// identifier family (SM-R530 vs SM-R420) can be detected even when a
+// DIFFERENT shared token on the same candidate ("buds3") would otherwise
+// satisfy the old "some overlap" check and mask it.
+function buildLetterPrefixMap(tokens) {
+    const map = new Map();
+    for (const tok of tokens) {
+        const prefix = leadingLetterPrefix(tok);
+        if (!prefix) continue;
+        const numMatch = tok.match(/\d+/);
+        if (!numMatch) continue;
+        if (!map.has(prefix)) map.set(prefix, new Set());
+        map.get(prefix).add(numMatch[0]);
+    }
+    return map;
+}
+
+// Phase 14 — Fix B helper: groups bare numbers and digit-first alnum codes
+// by their leading digit run ("17" -> {"17"}, "17e" -> {"17e"}) so "17"
+// (bare) vs "17e" (suffixed) are compared as the same numeric family even
+// though the full token strings differ, and "15amn8" vs "15iru8" are
+// compared as whole codes within the same "15" family.
+function buildDigitGroupMap(tokens) {
+    const map = new Map();
+    for (const tok of tokens) {
+        const digitRun = leadingDigitRun(tok);
+        if (!digitRun) continue;
+        if (!map.has(digitRun)) map.set(digitRun, new Set());
+        map.get(digitRun).add(tok);
+    }
+    return map;
+}
+
 function evaluateVariantIdentity(sourceProduct, candidateTitle) {
     const sourceName = sourceProduct.name || [sourceProduct.brand, sourceProduct.productName].filter(Boolean).join(" ");
     const sourceIdentityText = [sourceProduct.model, sourceProduct.productName, sourceName].filter(Boolean).join(" ");
@@ -111,6 +149,31 @@ function evaluateVariantIdentity(sourceProduct, candidateTitle) {
         };
     }
 
+    // 1b) Phase 14 Fix D — even when SOME letter-first token overlaps (both
+    //     mention "buds3"), a DIFFERENT explicit identifier sharing the same
+    //     family prefix (e.g. "r530" vs "r420" in "SM-R530"/"SM-R420") is a
+    //     genuine SKU conflict that the "some" check in (1) never catches,
+    //     because it only requires ONE shared token anywhere in the list —
+    //     it never checks whether an aligned pair with the same prefix
+    //     actually agrees. Deliberately keyed on "at least one common
+    //     prefix disagrees", not "any token differs" — a prefix with no
+    //     candidate-side counterpart is not evidence of anything (absence
+    //     of signal is never a conflict, same principle as (1)/(2) above).
+    const sourceLetterPrefixMap = buildLetterPrefixMap(sourceVersionTokens);
+    const candidateLetterPrefixMap = buildLetterPrefixMap(candidateVersionTokens);
+    for (const [prefix, sourceNums] of sourceLetterPrefixMap) {
+        const candidateNums = candidateLetterPrefixMap.get(prefix);
+        if (!candidateNums) continue;
+        const agrees = [...sourceNums].some((n) => candidateNums.has(n));
+        if (!agrees) {
+            return {
+                hardReject: true,
+                primaryIssue: "model_number_mismatch",
+                reason: `MODEL_NUMBER_MISMATCH: requested ${prefix}[${[...sourceNums].join(",")}], candidate ${prefix}[${[...candidateNums].join(",")}]`,
+            };
+        }
+    }
+
     // 2) Bare model numbers with no unit attached ("15" in "iPhone 15",
     //    "990" in "990 Pro", "5070" in "RTX 5070") — the same idea as (1)
     //    but for model numbers that aren't glued to a letter prefix.
@@ -128,7 +191,32 @@ function evaluateVariantIdentity(sourceProduct, candidateTitle) {
         };
     }
 
-    // 3) Variant/family suffix words (Ultra/Plus/Pro/Max/Air/Slim/Ti/Evo/...).
+    // 2b) Phase 14 Fix B — digit-first alphanumeric sub-model codes that
+    //     (1) and (2) can never see, because \b never falls between a digit
+    //     and an immediately-following letter ("17e", "15amn8"). Grouping
+    //     by leading digit run lets a bare "17" (source) and a suffixed
+    //     "17e" (candidate) be compared as the same numeric family — they
+    //     share the family but are NOT the same code, which is exactly a
+    //     conflict — and lets "15amn8" vs "15iru8" be compared as whole
+    //     codes within the shared "15" family.
+    const sourceAlnumCodes = extractAlnumModelCodes(sourceIdentityText);
+    const candidateAlnumCodes = extractAlnumModelCodes(candidateTitle);
+    const sourceDigitGroups = buildDigitGroupMap([...sourceModelNumbers, ...sourceAlnumCodes]);
+    const candidateDigitGroups = buildDigitGroupMap([...candidateModelNumbers, ...candidateAlnumCodes]);
+    for (const [digitRun, sourceCodes] of sourceDigitGroups) {
+        const candidateCodes = candidateDigitGroups.get(digitRun);
+        if (!candidateCodes) continue;
+        const agrees = [...sourceCodes].some((c) => candidateCodes.has(c));
+        if (!agrees) {
+            return {
+                hardReject: true,
+                primaryIssue: "model_number_mismatch",
+                reason: `MODEL_NUMBER_MISMATCH: requested [${[...sourceCodes].join(",")}], candidate [${[...candidateCodes].join(",")}] (family "${digitRun}")`,
+            };
+        }
+    }
+
+    // 3) Variant/family suffix words (Ultra/Plus/Pro/Max/Air/Slim/Ti/Evo/FE/Enterprise/...).
     //    Symmetric on purpose: requesting "S26 Ultra" and getting plain
     //    "S26" is just as wrong as requesting plain "S26" and getting
     //    "S26 Ultra" — both are a different, specific product.
@@ -143,6 +231,28 @@ function evaluateVariantIdentity(sourceProduct, candidateTitle) {
             primaryIssue: "variant_mismatch",
             reason: `VARIANT_MISMATCH: requested [${[...sourceVariants].join(",")}], candidate [${[...candidateVariants].join(",")}]`,
         };
+    }
+
+    // 4) Phase 14 Fix C — explicit color conflict. Previously color only
+    //    ever added a positive bonus on a match in the scoring section
+    //    below; a candidate stating a DIFFERENT explicit color than the one
+    //    the user explicitly asked for was never treated as a conflict at
+    //    all (a live resolver test found an offer stated as "Black"
+    //    resolving to a page for the "Sage" colorway). Mirrors the existing
+    //    storage/RAM philosophy — only a CONFIRMED conflict rejects;
+    //    absence of a source color (no explicit request) is never a
+    //    conflict, and a candidate that doesn't mention any recognizable
+    //    color at all is never penalized (detectColor returning null is
+    //    "unknown", not "different").
+    if (sourceProduct.color) {
+        const candidateColor = detectColor(candidateTitle);
+        if (candidateColor && normalizeTitle(candidateColor) !== normalizeTitle(sourceProduct.color)) {
+            return {
+                hardReject: true,
+                primaryIssue: "color_mismatch",
+                reason: `COLOR_MISMATCH: requested ${sourceProduct.color}, candidate ${candidateColor}`,
+            };
+        }
     }
 
     return { hardReject: false, primaryIssue: null, reason: null };
@@ -237,7 +347,20 @@ function computeMatchConfidence(sourceProduct, candidateTitle) {
     }
 
     if (sourceProduct.model) {
-        const modelHit = candidateNorm.includes(normalizeTitle(sourceProduct.model));
+        // Phase 14 Fix A — bounded phrase match instead of raw substring
+        // containment. `candidateNorm.includes(modelNorm)` previously
+        // treated a longer, distinct sub-model name as if it "contained"
+        // the shorter requested one purely because the shorter string is a
+        // textual substring (e.g. "iphone 17" is a substring of "iphone
+        // 17e"). A `\b...\b` match still allows the model phrase to appear
+        // anywhere in a longer title (retailer chrome, extra words after
+        // it) — it only refuses to match when the model text is glued
+        // directly onto more letters/digits with no boundary, which is
+        // exactly the false-positive case this fixes. (Most of the
+        // confirmed real-world cases are already caught earlier by Gate 1
+        // above — this is defense-in-depth for the scoring bonus itself.)
+        const modelNorm = normalizeTitle(sourceProduct.model);
+        const modelHit = modelNorm && new RegExp(`\\b${modelNorm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(candidateNorm);
         if (modelHit) {
             score += 0.25;
             notes.push("model match");

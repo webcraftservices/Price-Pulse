@@ -226,37 +226,43 @@ async function main() {
     }));
 
     // -----------------------------------------------------------------
-    // H. Wrong variant — DOCUMENTED, NOT FIXED IN THIS PHASE.
+    // H. Wrong variant — CLOSED in Phase 14 (Wrong-Variant Root Cause Fix).
     //
-    // Root cause is NOT in urlResolver.js: the frozen matchOffer()
-    // (variantMatcher.js) correctly scores "Tab S9 FE" lower than an
-    // exact "Tab S9" match (0.65 vs ~0.72, a POSSIBLE_MATCH, not an
-    // exact one) — that scoring itself is not demonstrably wrong. The
-    // actual gap is that compareEngine.js's matchValidator wires the
-    // resolver's relevance check to MATCH_CONFIDENCE_THRESHOLD (0.5),
-    // the "possible match" bar, rather than the stricter 0.75
-    // "confident" bar — and compareEngine.js is a frozen file this
-    // phase is not permitted to modify. This test documents the current,
-    // real behavior (a wrong-variant candidate passes a 0.5 relevance
-    // bar) as a known, reported limitation — it intentionally does NOT
-    // assert that the resolver rejects it, because it currently doesn't,
-    // and asserting otherwise would misrepresent the fix as complete.
+    // H1/H2 previously documented the exact gap this phase was chartered
+    // to fix: matchOffer() (services/productMatcher.js) scored "Tab S9 FE"
+    // as a POSSIBLE_MATCH (~0.65-0.72) against a "Tab S9" query rather than
+    // rejecting it outright, and — because compareEngine.js's
+    // matchValidator only required clearing the 0.5 "possible match" bar,
+    // not the stricter 0.75 "confident" bar — that score was enough for a
+    // resolved Tab S9 FE page to be accepted as the direct URL for a Tab S9
+    // request.
+    //
+    // Root cause (per the Phase 14 read-only investigation): "fe" (Fan
+    // Edition) was missing from VARIANT_SUFFIX_WORDS in utils/numbers.js —
+    // every OTHER product-line suffix (Pro/Ultra/Plus/Max/...) was already
+    // a Gate 1 hard-reject; "fe" simply wasn't on the list. Fix A adds it.
+    // Gate 1 now hard-rejects "Tab S9 FE" against "Tab S9" outright
+    // (confidence forced to 0), which closes the gap at its source rather
+    // than by touching the frozen compareEngine.js threshold — H2's
+    // "wrong variant still passes the 0.5 bar" finding no longer applies,
+    // because confidence is now 0, not ~0.65-0.72.
     // -----------------------------------------------------------------
-    console.log("\n=== H. Wrong variant — documented limitation (see comment above) ===");
-    await test("H1: matchOffer scores 'Tab S9 FE' as a lower-confidence POSSIBLE_MATCH against a 'Tab S9' query (not an exact match)", () => {
+    console.log("\n=== H. Wrong variant — CLOSED (see comment above) ===");
+    await test("H1 [Phase 14 Fix A]: matchOffer now HARD_REJECTs 'Tab S9 FE' against a 'Tab S9' query", () => {
         const source = { name: "Samsung Galaxy Tab S9", brand: "Samsung", productName: "Galaxy Tab S9" };
         const fe = matchOffer(source, "Samsung Galaxy Tab S9 FE 128GB Wifi Tablet Gray");
         const exact = matchOffer(source, "Samsung Galaxy Tab S9 128GB Wifi Tablet Gray");
-        assert.ok(fe.confidence < exact.confidence, "the FE variant should score lower than the exact match (it does — matcher itself is not the bug)");
-        assert.strictEqual(fe.matchDecision, "POSSIBLE_MATCH", "the frozen matcher already downgrades this to POSSIBLE_MATCH rather than treating it as exact");
+        assert.ok(fe.confidence < exact.confidence, "the FE variant must still score lower than the exact match");
+        assert.strictEqual(fe.matchDecision, "HARD_REJECT", "Gate 1 (Fix A: 'fe' added to VARIANT_SUFFIX_WORDS) now rejects this outright, not merely downgrades it");
+        assert.strictEqual(fe.confidence, 0, "a Gate 1 hard-reject forces confidence to 0");
     });
-    await test("H2 (KNOWN GAP — reported, not fixed): a 0.5-threshold relevance check, as used by compareEngine.js's matchValidator, still accepts the FE variant text", () => {
+    await test("H2 [Phase 14 Fix A — gap closed]: the FE variant no longer clears compareEngine.js's matchValidator threshold (0.5)", () => {
         const source = { name: "Samsung Galaxy Tab S9", brand: "Samsung", productName: "Galaxy Tab S9" };
         const MATCH_CONFIDENCE_THRESHOLD = 0.5; // mirrors offerEligibility.js's real constant, not modified here
         const feConfidence = matchOffer(source, "Samsung Galaxy Tab S9 FE 128GB Wifi Tablet Gray").confidence;
         assert.ok(
-            feConfidence >= MATCH_CONFIDENCE_THRESHOLD,
-            "documents that at the ACTUAL threshold compareEngine.js uses for matchValidator, the wrong variant currently still passes — fixing this requires changing a threshold constant used inside the frozen compareEngine.js and was intentionally left out of this phase's scope; reported in the final report"
+            feConfidence < MATCH_CONFIDENCE_THRESHOLD,
+            "confidence is now forced to 0 by Gate 1, so even compareEngine.js's unmodified 0.5 matchValidator threshold correctly rejects this — no change to compareEngine.js was needed"
         );
     });
 

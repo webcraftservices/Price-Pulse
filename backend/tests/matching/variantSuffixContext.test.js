@@ -179,9 +179,9 @@ test("'Galaxy S26 Edge' — no suffix word list entry for 'edge', correctly yiel
     assert.strictEqual(found.size, 0);
 });
 
-test("'Galaxy S26 FE' — no suffix word list entry for 'fe', correctly yields no variant (untouched behavior)", () => {
+test("[Phase 14 Fix A] 'Galaxy S26 FE' — 'fe' is now a recognized suffix word (Fan Edition is a distinct product line, e.g. Tab S9 vs Tab S9 FE)", () => {
     const found = extractVariantSuffixes("Samsung Galaxy S26 FE");
-    assert.strictEqual(found.size, 0);
+    assert.ok(found.has("fe"));
 });
 
 test("'iPhone Pro' still detects 'pro'", () => {

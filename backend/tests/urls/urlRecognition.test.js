@@ -145,7 +145,17 @@ async function main() {
         const result = await compareByProduct({ name: "Sony WH-1000XM5", brand: "Sony", productName: "WH-1000XM5", model: "WH-1000XM5" });
         assert.strictEqual(result.bestOffer, null, "XM4 must never be crowned best offer for an XM5 request");
         const offer = result.results.find((o) => o.platform === "Amazon");
-        assert.ok(offer.isPossibleMatch || offer.matchConfidence < 0.5, "XM4 vs XM5 should be a low-confidence/possible match, not confident");
+        // [Phase 14 Fix B] "1000xm5" vs "1000xm4" is a digit-first alnum
+        // model code (the "WH-1000XM5"/"WH-1000XM4" glued number+letters+
+        // number pattern) that Gate 1 (evaluateVariantIdentity) previously
+        // could not see at all -- it fell through to the scoring section
+        // and only got demoted, so it still appeared in `results` flagged
+        // as a possible match. Gate 1 now catches it directly and hard-
+        // rejects, so the offer is excluded from `results` entirely -- a
+        // strictly safer outcome than before. Accepting either shape here
+        // so this test doesn't regress if eligibility filtering changes
+        // again later.
+        assert.ok(!offer || offer.isPossibleMatch || offer.matchConfidence < 0.5, "XM4 vs XM5 must never appear as a confident match");
     });
 
     console.log("\n=== SUMMARY ===");

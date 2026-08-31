@@ -92,7 +92,14 @@ function extractModelNumberTokens(text) {
 // "slim"/"ti"/"evo" added for Phase 2 (Gate 1 identity matching — PS5 Slim,
 // RTX xx70 Ti, Samsung SSD EVO lines are distinct products from their
 // Pro/base counterparts, not just a scoring nudge).
-const VARIANT_SUFFIX_WORDS = ["pro", "plus", "ultra", "neo", "max", "elite", "lite", "se", "mini", "air", "note", "anc", "slim", "ti", "evo"];
+// Phase 14 (Wrong-Variant Root Cause Fix) — "fe" (Fan Edition: Tab S9 FE,
+// Galaxy Buds3 FE) and "enterprise" (Enterprise Edition: S26 Ultra
+// Enterprise Edition) added. Both are genuinely distinct product lines
+// with different specs/pricing from their base counterpart, the same
+// category of naming as Pro/Ultra/Plus above — previously missing here,
+// which is why a live 20-product resolver test found these sub-lines
+// scoring as a perfect model-match against the base product.
+const VARIANT_SUFFIX_WORDS = ["pro", "plus", "ultra", "neo", "max", "elite", "lite", "se", "mini", "air", "note", "anc", "slim", "ti", "evo", "fe", "enterprise"];
 
 // Phase 6 — chipset/processor name masking.
 //
@@ -163,6 +170,59 @@ function extractPlainModelNumbers(text) {
     return matches;
 }
 
+// Phase 14 (Wrong-Variant Root Cause Fix) — Fix B: digit-first alphanumeric
+// model/sub-model codes such as "17e" (iPhone 17 vs 17e) and "15AMN8" /
+// "15IRU8" (Lenovo IdeaPad Slim 3 sub-models).
+//
+// Root cause: both extractModelNumberTokens (letter-first, "s9"/"r530") and
+// extractPlainModelNumbers (bare digits) rely on \b word-boundary regexes.
+// A \b never falls between two word characters — so a digit run immediately
+// followed by letters with NO separator ("17e", "15amn8") is invisible to
+// both: extractModelNumberTokens requires a LETTER first, and
+// extractPlainModelNumbers' \b\d{2,4}\b fails because there's no boundary
+// between the last digit and the first following letter. A live resolver
+// test found this exact gap letting "iPhone 17e" and "Lenovo ...15IRU8"
+// score as an EXACT_MATCH against "iPhone 17" / "...15AMN8" requests.
+//
+// Excludes known unit/descriptor suffixes (gb/tb/mb/g/k/hz/...) so a
+// storage figure ("128gb") or network/resolution descriptor ("5g", "4k")
+// is never mistaken for a model code — those are already handled by
+// extractRamAndStorage / the noise-word list and must not be double-counted
+// here.
+const ALNUM_MODEL_CODE_EXCLUDED_SUFFIXES = new Set([
+    "gb", "tb", "mb", "kb", "g", "k", "hz", "mp", "mah", "kg", "ml", "cm", "mm", "hr", "hrs", "w", "v",
+]);
+
+function extractAlnumModelCodes(text) {
+    const norm = normalizeTitle(text);
+    const matches = norm.match(/\b\d+[a-z]+\d*\b/g) || [];
+    return matches.filter((tok) => {
+        const letterPart = (tok.match(/[a-z]+/) || [""])[0];
+        return !ALNUM_MODEL_CODE_EXCLUDED_SUFFIXES.has(letterPart);
+    });
+}
+
+// Splits the leading digit run off a bare number or a digit-first alnum
+// code ("17" -> "17", "17e" -> "17", "15amn8" -> "15") so two codes that
+// share the same numeric "family" but differ in what follows can be
+// grouped for comparison even though their full strings differ (Fix B,
+// used by evaluateVariantIdentity in productMatcher.js).
+function leadingDigitRun(tok) {
+    const m = String(tok || "").match(/^(\d+)/);
+    return m ? m[1] : null;
+}
+
+// Splits the leading letter-prefix off a letter-first model token
+// ("r530" -> "r", "buds3" -> "buds") so two tokens sharing the same
+// family prefix but a different numeric suffix (e.g. SM-R530 vs SM-R420)
+// can be compared as a pair even when OTHER shared tokens on the same
+// candidate ("buds3") would otherwise mask the conflict (Fix D, used by
+// evaluateVariantIdentity in productMatcher.js).
+function leadingLetterPrefix(tok) {
+    const m = String(tok || "").match(/^([a-z]+)\d+[a-z]*$/);
+    return m ? m[1] : null;
+}
+
 // Parses a raw price value (number, "₹1,299", "Rs. 1,299", "INR 1299", ...)
 // into a plain numeric value, or null if it can't be parsed. Never guesses.
 function parsePrice(raw) {
@@ -198,6 +258,9 @@ module.exports = {
     maskChipsetContext,
     extractVariantSuffixes,
     extractPlainModelNumbers,
+    extractAlnumModelCodes,
+    leadingDigitRun,
+    leadingLetterPrefix,
     parsePrice,
     roundCurrency,
 };
