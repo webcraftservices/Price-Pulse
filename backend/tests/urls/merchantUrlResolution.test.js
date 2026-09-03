@@ -403,7 +403,105 @@ async function main() {
         assert.strictEqual(resolved, null, "an internal/metadata-endpoint-shaped URL must never be accepted, regardless of merchant name plausibility");
     }));
 
-    console.log("\n=== SUMMARY ===");
+    // -----------------------------------------------------------------
+    // PHASE 15 — Offer-to-Resolved-URL Identity Validation
+    // ------------------------------------------------------------------
+    // Phase 14.2/15 investigation finding: the matchValidator above only
+    // ever compared the resolved candidate against canonicalProduct (what
+    // the USER asked for) — never against what THIS SPECIFIC offer's own
+    // title already promised. Two live-verified failures motivated this:
+    // an offer titled "Apple iPhone 17 512GB" got upgraded to a resolved
+    // 256GB page, and an offer titled "...15AMN8" got upgraded to a
+    // resolved "...15ABR8" page — both because canonicalProduct itself
+    // was generic (the user's query never specified storage/sub-model),
+    // so there was nothing on the canonicalProduct side to conflict with.
+    //
+    // These tests deliberately use a GENERIC canonicalProduct (mirroring
+    // the real "iPhone 17" / "Lenovo IdeaPad Slim 3" queries) so that only
+    // the offer's own title — not canonicalProduct — carries the specific
+    // detail being validated. That isolates exactly what Phase 15 added.
+    console.log("\n=== Phase 15: offer-to-resolved-URL identity validation ===");
+
+    // Layer 1 — sanity-check extractCanonicalProduct() on the exact offer
+    // titles these integration tests rely on, before trusting it in the
+    // full flow below (a test calling only computeMatchConfidence() would
+    // not prove the real offer.title -> extraction -> validation path).
+    await test("Phase 15 Layer 1: extractCanonicalProduct() preserves the model codes and storage these tests depend on", () => {
+        const { extractCanonicalProduct } = require(path.join(__dirname, "..", "..", "comparison", "productIdentity"));
+        const iphone = extractCanonicalProduct("Apple iPhone 17 512GB");
+        assert.strictEqual(iphone.storage, "512gb");
+        const lenovo = extractCanonicalProduct("Lenovo IdeaPad Slim 3 15AMN8");
+        assert.ok(/15amn8/i.test(lenovo.model), `expected the 15AMN8 code to survive extraction, got model="${lenovo.model}"`);
+        const buds = extractCanonicalProduct("Samsung Galaxy Buds3 SM-R530");
+        assert.ok(/sm-?r530/i.test(buds.model), `expected the SM-R530 code to survive extraction, got model="${buds.model}"`);
+        const generic = extractCanonicalProduct("Samsung Galaxy S26 Ultra");
+        assert.strictEqual(generic.storage, null, "a generic title must not fabricate a storage value");
+        assert.strictEqual(generic.ram, null, "a generic title must not fabricate a RAM value");
+    });
+
+    // Layer 3 — Integration I1: offer says 512GB, resolved candidate is
+    // 256GB, canonicalProduct never mentions storage at all. Before this
+    // fix: accepted (this is the live-verified iPhone 17 failure). After:
+    // rejected, original Google URL preserved.
+    await test("Phase 15 Integration I1: offer 512GB vs resolved candidate 256GB is rejected even though canonicalProduct has no storage", withEnabled(async () => {
+        setSearchResults([{ title: "Apple iPhone 17 256GB Black - Reliance Digital", link: "https://reliancedigital.in/product/apple-iphone-17-256-gb-black", snippet: "Apple iPhone 17 256GB" }]);
+        setFixture([{ title: "Apple iPhone 17 512GB", source: "Reliance Digital", link: "https://www.google.com/search?ibp=oshop&q=p15i1", price: "₹1,04,900" }]);
+        const result = await compareByProduct({ brand: "Apple", model: "iPhone 17", productName: "iPhone 17", productId: "p15-i1-unique" });
+        const offer = result.results.find((r) => r.platform === "Reliance Digital");
+        assert.ok(offer, "the offer must still be present in results");
+        assert.strictEqual(offer.isGoogleRedirect, true, "a resolved page conflicting with the offer's own stated storage must be rejected");
+        assert.strictEqual(offer.isDirectMerchantUrl, false);
+        assert.strictEqual(offer.urlResolutionStatus, "failed");
+    }));
+
+    // Integration I2 — same offer, but the resolved candidate agrees on
+    // storage: must be accepted normally.
+    await test("Phase 15 Integration I2: offer 512GB vs resolved candidate 512GB (matching) is accepted", withEnabled(async () => {
+        setSearchResults([{ title: "Apple iPhone 17 512GB Black - Reliance Digital", link: "https://reliancedigital.in/product/apple-iphone-17-512-gb-black", snippet: "Apple iPhone 17 512GB" }]);
+        setFixture([{ title: "Apple iPhone 17 512GB", source: "Reliance Digital", link: "https://www.google.com/search?ibp=oshop&q=p15i2", price: "₹1,29,900" }]);
+        const result = await compareByProduct({ brand: "Apple", model: "iPhone 17", productName: "iPhone 17", productId: "p15-i2-unique" });
+        const offer = result.results.find((r) => r.platform === "Reliance Digital");
+        assert.strictEqual(offer.isDirectMerchantUrl, true);
+        assert.strictEqual(offer.url, "https://reliancedigital.in/product/apple-iphone-17-512-gb-black");
+    }));
+
+    // Integration I3 — the live-verified Lenovo sub-model failure.
+    await test("Phase 15 Integration I3: offer 15AMN8 vs resolved candidate 15ABR8 is rejected even though canonicalProduct has no sub-model", withEnabled(async () => {
+        setSearchResults([{ title: "Lenovo IdeaPad Slim 3 15ABR8 Thin Light Laptop - Vijay Sales", link: "https://www.vijaysales.com/p/lenovo-ideapad-slim-3-15abr8-amd-ryzen-5", snippet: "Lenovo IdeaPad Slim 3 15ABR8 AMD Ryzen 5" }]);
+        setFixture([{ title: "Lenovo IdeaPad Slim 3 15AMN8 Thin & Light Laptop", source: "Vijay Sales", link: "https://www.google.com/search?ibp=oshop&q=p15i3", price: "₹52,990" }]);
+        const result = await compareByProduct({ brand: "Lenovo", model: "IdeaPad Slim 3", productName: "IdeaPad Slim 3", productId: "p15-i3-unique" });
+        const offer = result.results.find((r) => r.platform === "Vijay Sales");
+        assert.ok(offer, "the offer must still be present in results");
+        assert.strictEqual(offer.isGoogleRedirect, true, "a resolved page with a conflicting sub-model code must be rejected");
+        assert.strictEqual(offer.urlResolutionStatus, "failed");
+    }));
+
+    // Integration I4 — regression guard: a fully generic offer resolving to
+    // a more-specific candidate page must NOT be rejected merely because
+    // the candidate has extra detail ("absence is not conflict").
+    await test("Phase 15 Integration I4: generic offer vs a more-specific resolved candidate is still accepted (absence is not conflict)", withEnabled(async () => {
+        setSearchResults([{ title: "Samsung Galaxy S26 Ultra 256GB - MRV Electronics", link: "https://mrvelectronics.in/products/samsung-galaxy-s26-ultra-256gb", snippet: "Samsung Galaxy S26 Ultra 256GB" }]);
+        setFixture([{ title: "Samsung Galaxy S26 Ultra", source: "MRV electronics", link: "https://www.google.com/search?ibp=oshop&q=p15i4", price: "₹94,999" }]);
+        const result = await compareByProduct({ brand: "Samsung", model: "Galaxy S26 Ultra", productName: "Galaxy S26 Ultra", productId: "p15-i4-unique" });
+        const offer = result.results.find((r) => r.platform === "MRV electronics");
+        assert.strictEqual(offer.isDirectMerchantUrl, true, "a generic offer title must not block resolution to a more-specific candidate page");
+        assert.strictEqual(offer.url, "https://mrvelectronics.in/products/samsung-galaxy-s26-ultra-256gb");
+    }));
+
+    // R3 (SKU/model-number mismatch) exercised through the full flow, not
+    // just the unit-level check already covered in Layer 1/phase14WrongVariant —
+    // proves the SM-R530/SM-R420 conflict is actually enforced at resolution time.
+    await test("Phase 15 R3: offer SM-R530 vs resolved candidate SM-R420 is rejected end to end", withEnabled(async () => {
+        setSearchResults([{ title: "Samsung Galaxy Buds3 SM-R420 - Croma", link: "https://www.croma.com/samsung-galaxy-buds3-sm-r420", snippet: "Samsung Galaxy Buds3 SM-R420" }]);
+        setFixture([{ title: "Samsung Galaxy Buds3 SM-R530", source: "Croma", link: "https://www.google.com/search?ibp=oshop&q=p15r3", price: "₹13,999" }]);
+        const result = await compareByProduct({ brand: "Samsung", model: "Galaxy Buds3", productName: "Galaxy Buds3", productId: "p15-r3-unique" });
+        const offer = result.results.find((r) => r.platform === "Croma");
+        assert.ok(offer, "the offer must still be present in results");
+        assert.strictEqual(offer.isGoogleRedirect, true, "a resolved page with a conflicting SKU/model number must be rejected");
+        assert.strictEqual(offer.urlResolutionStatus, "failed");
+    }));
+
+
     const passed = results.filter((r) => r.pass).length;
     console.log(`${passed}/${results.length} passed`);
     if (passed !== results.length) process.exitCode = 1;

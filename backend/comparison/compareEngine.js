@@ -20,7 +20,7 @@
  */
 
 const { ACTIVE_ADAPTERS } = require("../services/stores");
-const { canonicalizeProduct } = require("./productIdentity");
+const { canonicalizeProduct, extractCanonicalProduct } = require("./productIdentity");
 const { buildSearchQuery } = require("./productNormalizer");
 const { planQueries } = require("./searchPlanner");
 const { collectCandidates, runAdaptersForQuery } = require("./candidateCollector");
@@ -159,8 +159,32 @@ async function attemptSecondaryUrlResolution(scoredOffers, canonicalProduct, que
         candidates.map(async (offer) => {
             offer._urlResolutionStatus = "failed"; // default; overwritten below on success
             try {
+                // Phase 15 (Offer-to-Resolved-URL Identity Validation): the
+                // canonicalProduct-only check below only confirms the resolved
+                // candidate matches what the user asked for in general — it
+                // never confirms the candidate matches what THIS SPECIFIC
+                // offer's own title already promised (e.g. a live-verified
+                // failure: offer.title said "Apple iPhone 17 512GB" but
+                // canonicalProduct never mentioned storage at all, because the
+                // user's query was just "iPhone 17" — so a resolved 256GB page
+                // passed canonicalProduct validation unchallenged). Reuses
+                // extractCanonicalProduct() (already used to parse the user's
+                // OWN pasted title/URL in canonicalizeProduct above) to parse
+                // this offer's title into the same structured shape, then
+                // reuses computeMatchConfidence()/matchOffer() completely
+                // unmodified — no new matching logic, no change to
+                // urlResolver.js's matchValidator contract (still
+                // text => boolean). Because computeMatchConfidence only ever
+                // compares an attribute the SOURCE side actually has (see
+                // productMatcher.js's storage/ram/color/model-code checks),
+                // a generic offer title (offerIdentity.storage/ram/color all
+                // null) imposes no extra constraint here — "absence of signal
+                // is never a conflict" is preserved without any special-casing.
+                const offerIdentity = extractCanonicalProduct(offer.title);
                 const resolved = await resolveDirectMerchantUrlDetailed(offer.store, query, {
-                    matchValidator: (text) => matchOffer(canonicalProduct, text).confidence >= MATCH_CONFIDENCE_THRESHOLD,
+                    matchValidator: (text) =>
+                        matchOffer(canonicalProduct, text).confidence >= MATCH_CONFIDENCE_THRESHOLD &&
+                        matchOffer(offerIdentity, text).confidence >= MATCH_CONFIDENCE_THRESHOLD,
                 });
                 if (resolved) {
                     offer.productUrl = resolved.url;
