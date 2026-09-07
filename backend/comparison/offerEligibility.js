@@ -55,6 +55,17 @@ function isEligibleForResults(offer) {
  * defaults to true (`!== false`) for any offer offerQuality.js hasn't run
  * on yet (e.g. direct unit tests of this function) — the pipeline
  * (compareEngine.js) always runs attachOfferQuality before this gate.
+ *
+ * Phase 10 note: I tried adding a storage_unconfirmed/ram_unconfirmed
+ * exclusion here and reverted it — tests/matching/
+ * phase7OfferQualityAndOutliers.test.js's "Phase 5 RAM-unconfirmed
+ * behavior unchanged" test proves bestOffer-eligibility for an
+ * unconfirmed-attribute STRONG_MATCH is a deliberate, already-tested
+ * prior-phase decision, not an oversight — and Phase 10's own Task 10
+ * explicitly excludes ranking/offer-quality rules from this phase's
+ * scope. See PHASE10_MATCH_CONFIDENCE_AUDIT_REPORT.md for the full
+ * reasoning and the pre-existing (not newly-introduced) free-text repro
+ * that shows this was already reachable before this phase's changes.
  */
 function isEligibleForComparison(offer) {
     return (

@@ -14,12 +14,13 @@
  * and tests.
  */
 
-const { normalizeTitle, tokenize, jaccardOverlap, looksLikeAccessory, detectColor } = require("../utils/text");
+const { normalizeTitle, tokenize, jaccardOverlap, looksLikeAccessory, detectColor, detectNetworkGeneration, detectPanelTechnology } = require("../utils/text");
 const {
     extractStorageTokens,
     extractRamAndStorage,
     extractModelNumberTokens,
     extractPlainModelNumbers,
+    detectScreenSize,
     extractVariantSuffixes,
     extractAlnumModelCodes,
     leadingDigitRun,
@@ -251,6 +252,72 @@ function evaluateVariantIdentity(sourceProduct, candidateTitle) {
                 hardReject: true,
                 primaryIssue: "color_mismatch",
                 reason: `COLOR_MISMATCH: requested ${sourceProduct.color}, candidate ${candidateColor}`,
+            };
+        }
+    }
+
+    // 5) Phase 12 (Wrong-Variant Suffix Coverage Audit) — explicit network-
+    //    generation conflict (4G vs 5G). Same shape as the color check
+    //    directly above, on purpose: only fires when the SOURCE's own
+    //    identity text explicitly states a generation (e.g. a structured
+    //    {model: "Galaxy M14 5G"} request) AND the candidate explicitly
+    //    states a DIFFERENT one. A source that never mentions 4G/5G is
+    //    never penalized just because a candidate's title happens to say
+    //    "5G" — that's the normal case for virtually every flagship
+    //    listing and must keep matching exactly as it does today.
+    const sourceNetworkGen = detectNetworkGeneration(sourceIdentityText);
+    if (sourceNetworkGen) {
+        const candidateNetworkGen = detectNetworkGeneration(candidateTitle);
+        if (candidateNetworkGen && candidateNetworkGen !== sourceNetworkGen) {
+            return {
+                hardReject: true,
+                primaryIssue: "network_generation_mismatch",
+                reason: `NETWORK_GENERATION_MISMATCH: requested ${sourceNetworkGen}, candidate ${candidateNetworkGen}`,
+            };
+        }
+    }
+
+    // 6) Phase 14 (TV Panel-Technology Identity Audit) — explicit panel-
+    //    technology conflict (OLED vs QLED vs QNED vs Nano Cell). Same
+    //    shape as the checks directly above, on purpose: only fires when
+    //    the source's own identity text explicitly names a specific
+    //    technology AND the candidate explicitly names a DIFFERENT one.
+    //    Reproduced live with the matcher before this fix: "LG 55 inch
+    //    OLED TV" scored a 0.82 STRONG_MATCH against "LG 55 inch QLED
+    //    TV" — two fundamentally different technologies (OLED is
+    //    self-emissive; QLED is a quantum-dot-enhanced backlit LCD).
+    //    A silent source (no technology mentioned at all) is never
+    //    penalized just because a candidate names one — that keeps
+    //    "Samsung 55 inch 4K Smart TV" matching "Samsung 55 inch QLED
+    //    4K Smart TV" exactly as it does today.
+    const sourceTech = detectPanelTechnology(sourceIdentityText);
+    if (sourceTech) {
+        const candidateTech = detectPanelTechnology(candidateTitle);
+        if (candidateTech && candidateTech !== sourceTech) {
+            return {
+                hardReject: true,
+                primaryIssue: "panel_technology_mismatch",
+                reason: `PANEL_TECHNOLOGY_MISMATCH: requested ${sourceTech}, candidate ${candidateTech}`,
+            };
+        }
+    }
+
+    // 7) Phase 15 (Live Cross-Phase Validation) — explicit screen-size
+    //    conflict. Same shape as every check above: only fires when BOTH
+    //    sides state an explicit size AND they differ. Live repro this
+    //    fixes: "LG OLED83C24LA" (83", via LG's own OLED+size+series model
+    //    convention) scored STRONG_MATCH and became bestOffer against a
+    //    requested 55" TV, because nothing compared sizes at all. A
+    //    size-silent source or candidate is never penalized — this must
+    //    NOT turn into "every TV needs an exact size to match."
+    const sourceSize = detectScreenSize(sourceIdentityText);
+    if (sourceSize) {
+        const candidateSize = detectScreenSize(candidateTitle);
+        if (candidateSize && candidateSize !== sourceSize) {
+            return {
+                hardReject: true,
+                primaryIssue: "screen_size_mismatch",
+                reason: `SCREEN_SIZE_MISMATCH: requested ${sourceSize}in, candidate ${candidateSize}in`,
             };
         }
     }

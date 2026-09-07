@@ -134,26 +134,66 @@ function maxResolutionAttempts() {
 // price, which is exactly where "bestDirectOffer: null" hurts the most).
 // This requires offerQuality to already be computed — see runComparison's
 // call order below, which now runs attachOfferQuality BEFORE this.
+//
+// Phase 9 (URL Resolution Coverage & Measurement): this function now
+// returns a metrics object instead of void, purely additive — no offer
+// field, no filter/sort/slice condition, and no resolver call changed.
+// Definitions match the Phase 9 spec exactly:
+//   eligible       — offers passing the filter() below, i.e. Google-redirect,
+//                     not hard-rejected, validly priced, confidently matched,
+//                     and offerQuality "trusted" (the ONLY conditions under
+//                     which this engine ever considers spending resolver
+//                     budget on an offer — a raw Google-redirect offer that
+//                     fails one of these was never a resolver candidate at
+//                     all, so it is not counted here as "skipped" either).
+//   attempted      — eligible offers actually sliced into the bounded batch
+//                     and sent to resolveDirectMerchantUrlDetailed.
+//   succeeded      — attempted offers upgraded to a direct URL.
+//   failed         — attempted offers where the resolver ran but returned
+//                     nothing usable, or threw (caught below).
+//   skippedByLimit — eligible offers NOT attempted purely because
+//                     maxResolutionAttempts() had already been reached
+//                     (this function has no other skip path — every
+//                     eligible offer is either in the attempted slice or
+//                     cut by it, so skippedOther is always 0 here).
+//   skippedOther   — always 0 in this function; kept as an explicit field
+//                     (rather than omitted) so the invariant
+//                     attempted + skippedByLimit + skippedOther === eligible
+//                     is checkable without special-casing this call site.
 async function attemptSecondaryUrlResolution(scoredOffers, canonicalProduct, query) {
-    if (!isMerchantResolverEnabled()) return;
+    const limit = maxResolutionAttempts();
+    if (!isMerchantResolverEnabled()) {
+        return { limit, eligible: 0, attempted: 0, succeeded: 0, failed: 0, skippedByLimit: 0, skippedOther: 0 };
+    }
 
     const TIER_RANK = { major_retailer: 0, known_retailer: 1, other_seller: 2 };
-    const candidates = scoredOffers
-        .filter(
-            (o) =>
-                o._isGoogleRedirectUrl &&
-                !o.hardReject &&
-                typeof o.price === "number" &&
-                o.price > 0 &&
-                o.matchConfidence >= BEST_OFFER_MATCH_THRESHOLD &&
-                (!o.offerQuality || o.offerQuality.status === "trusted")
-        )
+    const eligibleOffers = scoredOffers.filter(
+        (o) =>
+            o._isGoogleRedirectUrl &&
+            !o.hardReject &&
+            typeof o.price === "number" &&
+            o.price > 0 &&
+            o.matchConfidence >= BEST_OFFER_MATCH_THRESHOLD &&
+            (!o.offerQuality || o.offerQuality.status === "trusted")
+    );
+    const candidates = eligibleOffers
+        .slice() // sort() below is otherwise destructive to eligibleOffers itself
         .sort((a, b) => {
             const tierDiff = (TIER_RANK[a._retailerTier] ?? 2) - (TIER_RANK[b._retailerTier] ?? 2);
             if (tierDiff !== 0) return tierDiff;
             return a.price - b.price;
         })
-        .slice(0, maxResolutionAttempts());
+        .slice(0, limit);
+
+    const metrics = {
+        limit,
+        eligible: eligibleOffers.length,
+        attempted: candidates.length,
+        succeeded: 0,
+        failed: 0,
+        skippedByLimit: eligibleOffers.length - candidates.length,
+        skippedOther: 0,
+    };
 
     await Promise.all(
         candidates.map(async (offer) => {
@@ -192,8 +232,10 @@ async function attemptSecondaryUrlResolution(scoredOffers, canonicalProduct, que
                     offer._merchantUrlSource = "merchant_url_resolver";
                     offer._urlConfidenceLevel = resolved.confidence; // "high" | "medium"
                     offer._urlResolutionStatus = "resolved";
+                    metrics.succeeded += 1;
                     console.log(`[COMPARE] Resolved direct URL for ${offer.store} (confidence: ${resolved.confidence})`);
                 } else {
+                    metrics.failed += 1;
                     console.log(`[COMPARE] URL resolution found nothing usable for ${offer.store} — keeping Google Shopping fallback`);
                 }
             } catch (err) {
@@ -201,10 +243,20 @@ async function attemptSecondaryUrlResolution(scoredOffers, canonicalProduct, que
                 // comparison itself (spec Phase 13) — the offer keeps its
                 // original Google Shopping URL and stays fully eligible
                 // for bestOffer (just not bestDirectOffer).
+                metrics.failed += 1;
                 console.log(`[COMPARE] URL resolution error for ${offer.store}: ${err.message}`);
             }
         })
     );
+
+    console.log(`[COMPARE] URL resolution limit: ${metrics.limit}`);
+    console.log(
+        `[COMPARE] URL resolution: eligible=${metrics.eligible} attempted=${metrics.attempted} ` +
+        `succeeded=${metrics.succeeded} failed=${metrics.failed} ` +
+        `skippedByLimit=${metrics.skippedByLimit} skippedOther=${metrics.skippedOther}`
+    );
+
+    return metrics;
 }
 
 /**
@@ -297,7 +349,8 @@ async function runComparison(sourceProduct, { sourceHost = null } = {}) {
     // changes matchConfidence/matchDecision/hardReject/offerQuality, it
     // only leaves the offer on its original, honestly-labeled Google
     // Shopping URL.
-    await attemptSecondaryUrlResolution(offerQualityScored, canonicalProduct, query);
+    const urlResolutionMetrics = await attemptSecondaryUrlResolution(offerQualityScored, canonicalProduct, query);
+    diagnostics.urlResolution = urlResolutionMetrics;
 
     // QUALITY SCORING (spec Part 18) — additive metadata alongside
     // matchConfidence; never affects ranking/bestOffer selection below,

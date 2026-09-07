@@ -55,6 +55,30 @@ function extractCanonicalProduct(rawTitle) {
 function canonicalizeProduct(sourceProduct) {
     if (sourceProduct.brand) {
         const product = { ...sourceProduct };
+        // Phase 10 (Match Confidence & Variant Evidence Audit) fix: the
+        // free-text branch below (extractCanonicalProduct, lines ~42-43)
+        // has always kept productName/model in sync. This structured-input
+        // branch never did — a caller passing {brand, model, storage} (the
+        // exact shape compareByProduct/AI Find/the live-test harness all
+        // use) left product.name AND product.productName both undefined.
+        // That silently starved TWO signals of evidence the caller already
+        // gave us: evaluateProductIdentity's Gate-0 sourceName (used to
+        // classify the REQUESTED product type — fell back to "unknown"
+        // instead of "smartphone") and computeMatchConfidence's title-
+        // overlap jaccard score (fell back to brand-only tokens, e.g.
+        // "samsung" alone, discarding "galaxy s26 ultra" entirely even
+        // though the dedicated +0.25 model-match bonus a few lines later
+        // reads sourceProduct.model directly and DID see it). Gate 1
+        // (evaluateVariantIdentity, generation/variant hard-reject) was
+        // never affected — it already builds sourceIdentityText from
+        // sourceProduct.model directly, independent of name/productName.
+        // This recovers evidence the caller already supplied; it does not
+        // touch storage/RAM confirmation (still handled entirely below,
+        // unchanged) and cannot manufacture a storage/RAM match that
+        // wasn't already there.
+        if (!product.name && !product.productName && product.model) {
+            product.productName = product.model;
+        }
         const inferredText = product.name || product.productName || "";
         if (!product.storage || !product.ram) {
             const inferred = extractRamAndStorage(inferredText);

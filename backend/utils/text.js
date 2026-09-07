@@ -100,6 +100,61 @@ function detectColor(text) {
     return null;
 }
 
+// Phase 12 (Wrong-Variant Suffix Coverage Audit) — explicit network-
+// generation conflict (4G vs 5G). Mirrors detectColor/the Phase 14 color-
+// conflict pattern exactly, on purpose: only a CONFIRMED conflict (both
+// sides explicitly state a DIFFERENT generation) is meaningful; absence
+// on either side is never treated as a mismatch.
+//
+// Why NOT a global VARIANT_SUFFIX_WORDS entry: "5G" is added as a generic
+// marketing descriptor on the overwhelming majority of current flagship
+// listings even when the person's own request never mentions it (see
+// DESCRIPTOR_PHRASES above, and every Phase 9-11 live-confirmed match —
+// Galaxy S26 Ultra, iPhone 17 Pro, Pixel 10 Pro — has a candidate title
+// ending "... 5G"). A symmetric suffix-set rule would hard-reject every
+// one of those already-verified-correct matches. But for some budget
+// product lines the distinction is a genuinely different phone: Samsung
+// Galaxy M14 4G (Snapdragon 680, model SM-M145F) and Galaxy M14 5G
+// (Exynos 1330, SM-M146B) differ in chipset, storage, battery, and
+// release date — confirmed via web search, not assumed. This detector
+// only feeds a conflict check gated on the SOURCE explicitly stating a
+// generation (see evaluateVariantIdentity) — it never fires just because
+// a candidate happens to say "5G" and the source is silent.
+function detectNetworkGeneration(text) {
+    const norm = normalizeTitle(text);
+    const match = norm.match(/\b([45])g\b/);
+    return match ? match[1] + "g" : null;
+}
+
+// Phase 14 (TV Panel-Technology Identity Audit) — explicit panel-
+// technology conflict (OLED vs QLED vs QNED vs Nano Cell), mirroring
+// detectNetworkGeneration/the color-conflict pattern exactly: only a
+// CONFIRMED conflict (both sides explicitly name a DIFFERENT specific
+// technology) is meaningful; absence on either side is never a conflict.
+//
+// Deliberately checks specific, proprietary/technical terms ONLY —
+// "oled", "qled" (also matches "neo qled"), "qned", "nanocell"/"nano
+// cell". Deliberately does NOT include bare "led" as a detected
+// technology: reproduced with the actual matcher, "Samsung QLED" vs
+// "Samsung LED" is genuinely ambiguous — "LED" is commonly used as a
+// generic umbrella descriptor (a QLED set's own listing sometimes still
+// says "LED TV" loosely) rather than a specific competing technology
+// name the way "OLED"/"QLED"/"QNED" are. Treating a source's silence on
+// technology (or a generic "LED" mention) as a conflict would risk false
+// rejections; left as a documented remaining risk rather than guessed at.
+// Order matters: check "qled" before bare "led" would ever be considered
+// so a longer specific term is never mistaken for the generic one (moot
+// here since "led" isn't detected at all, but kept for clarity if a
+// future phase adds it back narrowly).
+function detectPanelTechnology(text) {
+    const norm = normalizeTitle(text);
+    if (/\bqned\b/.test(norm)) return "qned";
+    if (/\bqled\b/.test(norm)) return "qled"; // also matches "neo qled" (contains "qled")
+    if (/\boled\b/.test(norm)) return "oled";
+    if (/\bnano\s?cell\b/.test(norm)) return "nanocell";
+    return null;
+}
+
 // Harmless retail/network/carrier descriptors that must not remain part of
 // the canonical model identity — "5G", "Smartphone", "Dual SIM", "Storage"
 // etc. are not different products, just spec/marketing chrome. Deliberately
@@ -208,6 +263,8 @@ module.exports = {
     detectBrand,
     COLOR_WORDS,
     detectColor,
+    detectNetworkGeneration,
+    detectPanelTechnology,
     DESCRIPTOR_PHRASES,
     stripDescriptors,
     cleanScrapedTitle,

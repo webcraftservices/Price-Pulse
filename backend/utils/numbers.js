@@ -99,7 +99,16 @@ function extractModelNumberTokens(text) {
 // category of naming as Pro/Ultra/Plus above — previously missing here,
 // which is why a live 20-product resolver test found these sub-lines
 // scoring as a perfect model-match against the base product.
-const VARIANT_SUFFIX_WORDS = ["pro", "plus", "ultra", "neo", "max", "elite", "lite", "se", "mini", "air", "note", "anc", "slim", "ti", "evo", "fe", "enterprise"];
+// Phase 11 (Live Validation) — "xl" added. A real live 4-product resolver
+// run surfaced "Google Pixel 10 Pro XL" (Flipkart ₹124,999) scoring a
+// perfect suffix match against a requested "Pixel 10 Pro" and, worse, two
+// unrelated "Pixel 10 Pro XL" listings (GameLoot ₹55,000, Cashify ₹78,899)
+// becoming bestOffer/bestDirectOffer for a "Pixel 10 Pro" request. Web
+// search confirmed Pro and Pro XL are genuinely distinct, separately
+// priced/specced phones (6.3" vs 6.8" display, different battery/price
+// tier) — same category of naming as Pro/Ultra/Plus above, missing here
+// for exactly the reason "fe" and "enterprise" were added in Phase 14.
+const VARIANT_SUFFIX_WORDS = ["pro", "plus", "ultra", "neo", "max", "elite", "lite", "se", "mini", "air", "note", "anc", "slim", "ti", "evo", "fe", "enterprise", "xl"];
 
 // Phase 6 — chipset/processor name masking.
 //
@@ -152,8 +161,33 @@ function maskChipsetContext(normalizedText) {
     return masked;
 }
 
+// "Mini LED" is a backlight TECHNOLOGY descriptor (see
+// detectPanelTechnology's doc comment on oled/qned/qled/nanocell), not a
+// device-edition variant suffix the way "iPhone Mini"/"Galaxy S24 Ultra"
+// are. "Ultra HD" is the same problem for "ultra": it's a near-universal
+// generic resolution descriptor (4K = "Ultra HD"), appearing in the
+// overwhelming majority of TV listings, not a device-edition name. Live
+// evidence: 19 of the VARIANT_MISMATCH rejections across 3 real TV test
+// runs had "Ultra HD" in the candidate title immediately before the
+// rejection — including a candidate that was otherwise a genuinely
+// correct, confirmed-same-size (55") QNED match. Without this mask,
+// "mini"/"ultra" (pre-existing VARIANT_SUFFIX_WORDS entries, added for
+// phone editions) get extracted from these generic phrases and
+// symmetrically HARD_REJECT legitimate TV listings purely because they
+// use standard marketing language the source query didn't happen to
+// repeat. Same masking technique as maskChipsetContext just above.
+const NON_VARIANT_PHRASE_PATTERNS = [/\bmini[\s-]?led\b/g, /\bultra\s?hd\b/g];
+
+function maskNonVariantPhrases(normalizedText) {
+    let masked = normalizedText;
+    for (const pattern of NON_VARIANT_PHRASE_PATTERNS) {
+        masked = masked.replace(pattern, (span) => span.replace(/[a-z0-9]/g, "_"));
+    }
+    return masked;
+}
+
 function extractVariantSuffixes(text) {
-    const norm = maskChipsetContext(normalizeTitle(text));
+    const norm = maskNonVariantPhrases(maskChipsetContext(normalizeTitle(text)));
     const found = new Set();
     for (const word of VARIANT_SUFFIX_WORDS) {
         if (new RegExp(`\\b${word}\\b`).test(norm)) found.add(word);
@@ -166,8 +200,83 @@ function extractVariantSuffixes(text) {
 // "Airdopes 141"), excluding anything that's actually a storage/RAM figure.
 function extractPlainModelNumbers(text) {
     const norm = normalizeTitle(text);
-    const matches = norm.match(/\b\d{2,4}\b(?!\s?(gb|tb|mb))/g) || [];
+    // Phase 15 (Live Cross-Phase Validation) fix: this lookahead previously
+    // only excluded gb/tb/mb, missing screen-size units entirely. A source
+    // of "55 inch QNED 4K Smart TV" was treating the bare "55" as if it
+    // were a required model-number code (like "15" in "iPhone 15"), then
+    // HARD_REJECTing every candidate that didn't also contain the literal
+    // digits "55" somewhere — including completely legitimate, size-silent
+    // QNED listings. Reproduced directly against 3 live TV test runs (LG
+    // OLED/QLED/QNED), not a single anecdote. "in"/"inch"/"inches" excluded
+    // the same way gb/tb/mb already were; screen size gets its own explicit
+    // comparison via detectScreenSize() below instead of leaking into the
+    // generic model-number-conflict mechanism.
+    const matches = norm.match(/\b\d{2,4}\b(?!\s?(gb|tb|mb|inch(es)?|in)\b)/g) || [];
     return matches;
+}
+
+// Phase 15 (Live Cross-Phase Validation) — explicit screen-size conflict,
+// same "explicit conflict only" shape as color/network-generation/panel-
+// technology above. Root cause this fixes: NO screen-size comparison
+// existed anywhere before this — a live test showed "LG OLED83C24LA" (LG's
+// own model-number convention encodes size right after the panel-type
+// prefix: OLED + 83 + series + region code = an 83" TV) scoring a 0.78
+// STRONG_MATCH and becoming bestOffer against a requested 55" TV, because
+// nothing ever compared the two sizes.
+//
+// Detects explicit sizes from four sources, in order:
+//   1. "55 inch"/"55 inches"/"55 in" (word form, post text-normalization)
+//   2. `55"` (quote form — checked on the ORIGINAL text, since
+//      normalizeTitle strips `"` entirely before this could see it)
+//   3. "139 cm"/"140 cm" (metric form, converted to the nearest inch)
+//   4. Model-code-encoded size — see the two prefix patterns below; the
+//      DIRECTION differs by product line (confirmed from live data, not
+//      assumed), so this is two separate patterns, not one.
+// Only a CONFIRMED conflict (both source and candidate explicitly state a
+// DIFFERENT size) rejects — a size-silent source or candidate is never
+// penalized, exactly like every other explicit-conflict check.
+// LG's OLED line encodes size AFTER the "OLED" prefix (real products:
+// OLED55C3, OLED65C3, OLED77C3 — well-established, not a guess).
+const SCREEN_SIZE_AFTER_PREFIX = /\boled(\d{2,3})(?!\d)/i;
+// LG's LCD-based lines (QNED/NanoCell/UHD/UR/UQ/UT) and Samsung/TCL/
+// Hisense QLED all encode size BEFORE the tier prefix instead — confirmed
+// directly from live data: "140 cm (55 inch) | ... | 55QNED82BXA" is the
+// SAME product, proving "55" (not "82") is the size and "82" is a
+// separate tier/series number. Getting this backwards was an earlier,
+// now-corrected version of this function that mistook "82" for size and
+// produced false SCREEN_SIZE_MISMATCH rejections against genuine 55"
+// QNED listings — caught before shipping, not after.
+const SCREEN_SIZE_BEFORE_PREFIX = /\b(\d{2,3})(qned|qled|nanocell|uhd|ur|uq|ut)(?![a-z])/i;
+
+function detectScreenSize(rawText) {
+    if (!rawText) return null;
+    const quoteMatch = rawText.match(/\b(\d{2,3})\s?"/);
+    if (quoteMatch) {
+        const n = parseInt(quoteMatch[1], 10);
+        if (n >= 20 && n <= 120) return n;
+    }
+    const norm = normalizeTitle(rawText);
+    const wordMatch = norm.match(/\b(\d{2,3})\s?(?:inch(?:es)?|in)\b/);
+    if (wordMatch) {
+        const n = parseInt(wordMatch[1], 10);
+        if (n >= 20 && n <= 120) return n;
+    }
+    const cmMatch = norm.match(/\b(\d{2,3})\s?cm\b/);
+    if (cmMatch) {
+        const n = Math.round(parseInt(cmMatch[1], 10) / 2.54);
+        if (n >= 20 && n <= 120) return n;
+    }
+    const beforeMatch = norm.match(SCREEN_SIZE_BEFORE_PREFIX);
+    if (beforeMatch) {
+        const n = parseInt(beforeMatch[1], 10);
+        if (n >= 32 && n <= 98) return n;
+    }
+    const afterMatch = norm.match(SCREEN_SIZE_AFTER_PREFIX);
+    if (afterMatch) {
+        const n = parseInt(afterMatch[1], 10);
+        if (n >= 32 && n <= 98) return n;
+    }
+    return null;
 }
 
 // Phase 14 (Wrong-Variant Root Cause Fix) — Fix B: digit-first alphanumeric
@@ -258,6 +367,7 @@ module.exports = {
     maskChipsetContext,
     extractVariantSuffixes,
     extractPlainModelNumbers,
+    detectScreenSize,
     extractAlnumModelCodes,
     leadingDigitRun,
     leadingLetterPrefix,

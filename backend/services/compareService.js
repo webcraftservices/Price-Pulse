@@ -25,6 +25,7 @@ const { BEST_OFFER_MATCH_THRESHOLD } = require("../comparison/offerRanker");
 const { cleanScrapedTitle, guessTitleFromUrl } = require("../utils/text");
 const { roundCurrency } = require("../utils/numbers");
 const { CompareError } = require("../utils/errors");
+const { hasSafeProtocol, isPrivateOrLocalHost } = require("../utils/url");
 
 const BROWSER_HEADERS = {
     "User-Agent":
@@ -46,6 +47,18 @@ async function scrapeProductDetails(url) {
             headers: BROWSER_HEADERS,
             timeout: 8000,
             maxRedirects: 5,
+            // SSRF hardening: the initial URL is checked by the caller
+            // (compareProduct) before we ever get here, but a redirect
+            // chain can still hop to an internal/private host mid-flight
+            // (the initial hostname check alone can't see that). Validate
+            // every redirect target the same way, and abort the request
+            // the moment one fails — never silently follow it.
+            beforeRedirect: (options) => {
+                const location = options.href || "";
+                if (!hasSafeProtocol(location) || isPrivateOrLocalHost(location)) {
+                    throw new Error(`Blocked redirect to unsafe host: ${options.hostname}`);
+                }
+            },
         });
         const $ = cheerio.load(response.data);
 
@@ -269,6 +282,14 @@ async function compareProduct(url) {
         parsedUrl = new URL(url);
     } catch {
         throw new CompareError("Please paste a valid product page URL (including https://).", 400, "INVALID_INPUT");
+    }
+
+    // SSRF guard: this URL comes directly from the request body and is
+    // about to be fetched server-side. Reject anything that isn't a plain
+    // public http(s) address before ever making the request — the redirect
+    // chain itself is separately guarded inside scrapeProductDetails.
+    if (!hasSafeProtocol(url) || isPrivateOrLocalHost(url)) {
+        throw new CompareError("Please paste a valid public product page URL.", 400, "INVALID_INPUT");
     }
 
     const { title, image } = await scrapeProductDetails(url);
