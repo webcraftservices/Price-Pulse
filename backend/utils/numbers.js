@@ -248,6 +248,39 @@ const SCREEN_SIZE_AFTER_PREFIX = /\boled(\d{2,3})(?!\d)/i;
 // QNED listings — caught before shipping, not after.
 const SCREEN_SIZE_BEFORE_PREFIX = /\b(\d{2,3})(qned|qled|nanocell|uhd|ur|uq|ut)(?![a-z])/i;
 
+// Real-world retailer listings don't always state a TV's exact
+// mathematically-converted cm figure. Evidence from live data: a genuine
+// 55" TV (true diagonal 55 * 2.54 = 139.7cm) is listed as "138 cm",
+// "139 cm", or "140 cm" depending on the retailer; a genuine 65" TV
+// (165.1cm true) is listed as "163 cm" through "166 cm". Plain
+// Math.round(cm / 2.54) turns "138 cm" into 54" and "163 cm" into 64" —
+// a real TV silently drops to a *different*, non-existent nearby size and
+// then false-rejects against its own correct request.
+//
+// Fix scope: correct ONLY this rounding-noise problem, without ever
+// letting two genuinely different, closely-spaced commercial sizes
+// (e.g. 42"/43", 49"/50", both real, only 2.54cm apart in true
+// diagonal) become indistinguishable. KNOWN_TV_SIZES_CM below lists each
+// standard size's exact true-diagonal cm value. A listed cm figure is
+// snapped to a known size ONLY when it falls within CM_SNAP_TOLERANCE of
+// EXACTLY ONE entry; if it falls within tolerance of more than one (which
+// happens automatically for every pair of sizes closer together than
+// 2 * CM_SNAP_TOLERANCE, e.g. the 42/43 and 49/50 pairs), or of none,
+// this deliberately does nothing and the caller falls back to the
+// original plain rounding — i.e. every ambiguous case behaves exactly as
+// it did before this fix. This guarantees the fix can only ever resolve
+// an already-unambiguous rounding-noise case; it can never merge two
+// different real sizes together.
+const KNOWN_TV_SIZES_CM = [24, 28, 32, 40, 42, 43, 48, 49, 50, 55, 58, 60, 65, 70, 75, 77, 83, 85, 86, 98, 100]
+    .map((inches) => ({ inches, cm: inches * 2.54 }));
+const CM_SNAP_TOLERANCE = 2.2; // cm; covers the largest observed real deviation (163cm vs 65" true 165.1cm = 2.1cm) with margin, while every known adjacent-size gap of >=5.08cm stays strictly unambiguous (2 * 2.2 = 4.4 < 5.08).
+
+function snapCmToKnownTvSize(rawCm) {
+    const withinTolerance = KNOWN_TV_SIZES_CM.filter((s) => Math.abs(rawCm - s.cm) <= CM_SNAP_TOLERANCE);
+    if (withinTolerance.length === 1) return withinTolerance[0].inches;
+    return null; // 0 or 2+ matches: ambiguous or no evidence — defer to plain rounding, unchanged.
+}
+
 function detectScreenSize(rawText) {
     if (!rawText) return null;
     const quoteMatch = rawText.match(/\b(\d{2,3})\s?"/);
@@ -263,7 +296,8 @@ function detectScreenSize(rawText) {
     }
     const cmMatch = norm.match(/\b(\d{2,3})\s?cm\b/);
     if (cmMatch) {
-        const n = Math.round(parseInt(cmMatch[1], 10) / 2.54);
+        const rawCm = parseInt(cmMatch[1], 10);
+        const n = snapCmToKnownTvSize(rawCm) ?? Math.round(rawCm / 2.54);
         if (n >= 20 && n <= 120) return n;
     }
     const beforeMatch = norm.match(SCREEN_SIZE_BEFORE_PREFIX);
