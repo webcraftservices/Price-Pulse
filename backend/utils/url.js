@@ -55,6 +55,48 @@ function belongsToDomain(url, domain) {
 // "verified direct merchant URL" — defense in depth against a
 // future/alternate resolution path that does fetch directly, and against
 // a search provider ever echoing back an internal-looking address.
+// Shared by the plain-IPv4 branch below AND the IPv4-mapped-IPv6 branch
+// (an IPv4 destination reached through an IPv6 literal must be judged by
+// the exact same rules as reaching it directly — one rule set, not two
+// independently-maintained copies that could drift apart).
+function isPrivateIpv4Octets(a, b) {
+    if (a === 127) return true; // loopback
+    if (a === 10) return true; // private
+    if (a === 172 && b >= 16 && b <= 31) return true; // private
+    if (a === 192 && b === 168) return true; // private
+    if (a === 169 && b === 254) return true; // link-local (covers the cloud metadata endpoint, 169.254.169.254)
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    if (a === 0) return true; // "this network"
+    return false;
+}
+
+// An IPv4-mapped IPv6 address (::ffff:a.b.c.d) is routed by the OS network
+// stack to the literal IPv4 address it embeds — a request to
+// http://[::ffff:169.254.169.254]/ genuinely reaches the same cloud
+// metadata endpoint as http://169.254.169.254/ would. Node's WHATWG URL
+// parser normalizes every input form (dotted, fully-expanded, compressed)
+// to the compressed hex form (e.g. "::ffff:7f00:1" for 127.0.0.1) before
+// this function ever sees it — confirmed directly: new URL('http://[::ffff:
+// 127.0.0.1]/').hostname === '[::ffff:7f00:1]'. This extracts the embedded
+// IPv4 address from that normalized hex form (and, defensively, from a
+// dotted-decimal form too, in case a hostname ever reaches this function
+// without going through new URL() first) and returns it as [a, b] octets,
+// or null if `bare` isn't an IPv4-mapped address at all.
+function extractIpv4MappedOctets(bare) {
+    const hexForm = bare.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+    if (hexForm) {
+        const hi = hexForm[1].padStart(4, "0");
+        const a = parseInt(hi.slice(0, 2), 16);
+        const b = parseInt(hi.slice(2, 4), 16);
+        return [a, b];
+    }
+    const dottedForm = bare.match(/^::ffff:(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/i);
+    if (dottedForm) {
+        return [Number(dottedForm[1]), Number(dottedForm[2])];
+    }
+    return null;
+}
+
 function isPrivateOrLocalHost(url) {
     let hostname;
     try {
@@ -67,19 +109,15 @@ function isPrivateOrLocalHost(url) {
     // IPv4 literal — check private/loopback/link-local/CGNAT ranges.
     const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
     if (ipv4) {
-        const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
-        if (a === 127) return true; // loopback
-        if (a === 10) return true; // private
-        if (a === 172 && b >= 16 && b <= 31) return true; // private
-        if (a === 192 && b === 168) return true; // private
-        if (a === 169 && b === 254) return true; // link-local
-        if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
-        if (a === 0) return true; // "this network"
-        return false;
+        return isPrivateIpv4Octets(Number(ipv4[1]), Number(ipv4[2]));
     }
     // IPv6 loopback/link-local/unique-local literals (bracketed or bare).
     const bare = hostname.replace(/^\[|\]$/g, "");
     if (bare === "::1" || bare.startsWith("fe80:") || bare.startsWith("fc") || bare.startsWith("fd")) return true;
+    // IPv4-mapped IPv6 (::ffff:a.b.c.d) — judge the embedded IPv4 address
+    // by the identical rules as a plain IPv4 literal (see comment above).
+    const mapped = extractIpv4MappedOctets(bare);
+    if (mapped) return isPrivateIpv4Octets(mapped[0], mapped[1]);
     return false;
 }
 

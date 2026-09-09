@@ -5,3 +5,9 @@
 
 # Dependencies
 node_modules/
+
+# Runtime-created, user-uploaded content (AI Find image uploads) — created
+# on demand by backend/routes/imageSearch.js and, as of Phase 18, always
+# cleaned up after each request; ignored regardless so an upload can never
+# accidentally end up committed if cleanup is ever skipped or bypassed.
+backend/uploads/
