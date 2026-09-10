@@ -102,8 +102,8 @@ What was implemented (`comparison/urlResolver.js`, orchestrated from `comparison
 | Provider | Current Status | Implemented? | How it obtains data | Blocker / Notes |
 |---|---|---:|---|---|
 | Google Shopping (via Serper) | Live, sole active data source | Yes | `services/stores/googleShopping.js` → `providers/serper/shoppingSearch.js` → real Serper `/shopping` HTTP call | Requires `SERPER_API_KEY`. This is the only entry in `ACTIVE_ADAPTERS`. |
-| Amazon | **Stub — blocked by external prerequisites** | No (`implemented: false`) | N/A — `searchProduct()` throws if called | Not "next phase" by repo evidence — no repo document schedules this. A separate feasibility investigation (conversational, not yet committed to any `.md` file in the repo) found: Amazon's PA-API 5.0 was retired May 15, 2026; its replacement, the Creators API, requires an active Associates account with 10 qualifying sales in the trailing 30 days (a rolling business precondition PricePulse cannot satisfy through engineering work alone), plus an unresolved question of whether pure price-comparison use fits the program's permitted use cases. |
-| Flipkart | **Stub — requires architectural work, feasibility unconfirmed** | No (`implemented: false`) | N/A — `searchProduct()` throws if called | Not "next phase" by repo evidence. Same feasibility investigation found: Flipkart's Affiliate API is feed-based (bulk category feeds), not query-based — incompatible with the current adapter interface's assumption of a live `searchProduct(query)` call. Would need a new ingestion/local-index sub-architecture, not just filling in the stub. Public documentation is also stale (~2016) and unverified against current Flipkart practice. |
+| Amazon | **Stub — blocked by external business prerequisite (confirmed, Phase 19)** | No (`implemented: false`) | N/A — `searchProduct()` throws if called | Not "next phase" by repo evidence — no repo document schedules this. Phase 19 verified live against Amazon's own PA-API documentation: PA-API 5.0 was retired May 15, 2026, and is no longer accepting new customers. Its replacement, the Creators API, requires an approved Amazon Associates account with **10 qualifying referred sales in the trailing 30 days** — a rolling business precondition, not something engineering work can satisfy. Whether pure price-comparison display is otherwise permitted under Associates policy was not independently confirmed from a primary source in Phase 19 and remains stated cautiously; the sales-volume precondition alone is sufficient to block activation today regardless. |
+| Flipkart | **Stub — technically compatible, blocked by Affiliate policy (corrected, Phase 19)** | No (`implemented: false`) | N/A — `searchProduct()` throws if called | Not "next phase" by repo evidence. **Correction to the prior "feed-based, architecturally incompatible" conclusion above:** Phase 19 verified against Flipkart's current official Affiliate API docs that a query-based `GET /search/{format}` (keyword) and `GET /product/{format}` (product-ID) endpoint exist alongside the feed APIs — this fits the existing `searchProduct(query)` adapter contract directly; no new ingestion/local-index sub-architecture is required. The decisive blocker instead is Flipkart's own published Affiliate Policy (`flipkart.com/pages/affiliate-policy`), which explicitly lists as an unsuitable-site category: sites that "list affiliate links on price comparison sites in any manner whatsoever." This is a direct policy exclusion, not a technical limitation. |
 
 ---
 
@@ -168,9 +168,9 @@ No secret values are reproduced below or anywhere in this document.
 - Amazon and Flipkart direct URLs depend entirely on opportunistic discovery through Google Shopping's own aggregation plus the resolver's dynamic MEDIUM-confidence path — there is no guarantee either retailer appears, confidently matched, in any given comparison.
 
 ### B. External dependency/business limitations
-- Amazon: PA-API 5.0 is retired; its replacement (Creators API) requires an active Associates account already generating 10+ qualifying sales per rolling 30 days — a business precondition, not something resolvable by writing code.
-- Amazon: whether Creators API's permitted use cases cover a pure price-comparison product (as opposed to affiliate content) is unresolved and requires an external/legal answer, not a technical one.
-- Flipkart: current real-world API access terms and behavior are unverified against stale (~2016) public documentation; requires direct confirmation with Flipkart before any further technical scoping is meaningful.
+- Amazon: PA-API 5.0 is retired (confirmed live, Phase 19); its replacement (Creators API) requires an active Associates account already generating 10+ qualifying sales per rolling 30 days — a business precondition, not something resolvable by writing code.
+- Amazon: whether Creators API's permitted use cases cover a pure price-comparison product (as opposed to affiliate content) was not independently confirmed from a primary source in Phase 19 and remains an open question — though it is moot until the sales-volume precondition above is separately satisfied.
+- Flipkart (corrected, Phase 19): the Affiliate API is *not* architecturally incompatible — a query-based search endpoint exists. The real blocker is policy: Flipkart's own Affiliate Policy explicitly excludes "price comparison sites ... in any manner whatsoever" from the standard program. This is a stated policy exclusion, not an unverified/stale-documentation question.
 
 ### C. Cosmetic/housekeeping items
 - `.env.example`'s comment for `ENABLE_MERCHANT_URL_RESOLVER` references the superseded `services/stores/merchantUrlResolver.js` instead of the actual `comparison/urlResolver.js`.
@@ -184,20 +184,20 @@ No secret values are reproduced below or anywhere in this document.
 ## 9. Open Work
 
 ### [Second live price-data provider — Amazon]
-Status: Not started (stub only)
+Status: Investigated and closed for now (Phase 19); stub only, not activated
 Evidence: `backend/services/stores/amazon.js`, `implemented: false`
 Why it is unfinished: No live Amazon integration exists; only Google Shopping's own listing of Amazon offers (if any) surfaces Amazon prices today.
-Dependencies/blockers: Amazon Creators API requires 10+ qualifying affiliate sales per rolling 30 days before credentials can even be issued — an external business precondition. Permitted-use-case fit for pure price comparison is also unconfirmed.
-Scope known/unknown: Unknown until the business precondition is resolvable and Amazon's policy fit is confirmed.
-Priority: Cannot be prioritized as engineering work at this time — blocked on a non-engineering precondition.
+Dependencies/blockers: Confirmed live in Phase 19 — Amazon Creators API requires an approved Associates account with 10+ qualifying referred sales per rolling 30 days before credentials can even be issued. This is an external business precondition, not an engineering task.
+Scope known/unknown: Known and unactionable until the business precondition is independently satisfied.
+Priority: Not an engineering task at this time. Decision: remain Serper-only (see §10).
 
 ### [Second live price-data provider — Flipkart]
-Status: Not started (stub only)
+Status: Investigated and closed for now (Phase 19); stub only, not activated
 Evidence: `backend/services/stores/flipkart.js`, `implemented: false`
 Why it is unfinished: No live Flipkart integration exists.
-Dependencies/blockers: Flipkart's Affiliate API appears to be feed-based, not query-based, which doesn't fit the current adapter interface's `searchProduct(query)` contract — would need a new ingestion/local-index sub-architecture. Current program terms are unverified against stale public docs.
-Scope known/unknown: Unknown — a feasibility spike (direct confirmation with Flipkart, not code) is the prerequisite before scope can even be estimated.
-Priority: Worth a feasibility spike before any engineering commitment; not currently scheduled by any repo document.
+Dependencies/blockers: **Corrected in Phase 19** — the Affiliate API is technically compatible with the existing `searchProduct(query)` contract via its `GET /search/{format}` keyword-search endpoint; no new sub-architecture is required. The actual blocker is Flipkart's own Affiliate Policy, which explicitly excludes price-comparison sites from the standard program.
+Scope known/unknown: Technical scope is now known (adapter-only change, per §10); business eligibility under the standard program is not obtainable as written.
+Priority: Not an engineering task at this time. Decision: remain Serper-only (see §10). Could only be reopened via a non-standard commercial arrangement with Flipkart, which is a business-development question, not an engineering one.
 
 ### [Stale `.env.example` comment for `ENABLE_MERCHANT_URL_RESOLVER`]
 Status: Not started
@@ -231,15 +231,19 @@ Priority: "OPTIONAL / NOT A CURRENTLY REQUIRED WORK ITEM"
 
 **Currently complete:** the entire matching/quality/ranking/URL-resolution pipeline described in §3, closed and live-validated.
 
-**Genuinely unfinished:** a second live data provider (Amazon and/or Flipkart) — see §9. This is the only substantive open item.
+**Genuinely unfinished:** a second live data provider (Amazon and/or Flipkart) — see §9. This is the only substantive open item, and it is now investigated and closed as of Phase 19/20 (see below), not merely open.
 
-**Requires an external/business decision, not engineering:** whether to pursue Amazon integration at all depends on PricePulse first generating real Amazon affiliate sales volume — an outcome of running the product, not of writing more code. Whether Flipkart integration is worth pursuing depends on directly confirming current Affiliate API terms with Flipkart, which is a business/ops action, not a coding task.
+**Final provider decision (Phase 19/20):** PricePulse remains Serper/Google Shopping-only. Neither Amazon nor Flipkart is implemented, and neither should be, at this time:
+- **Amazon** is blocked by an external business-access prerequisite — an approved Associates account already generating 10+ qualifying referred sales per rolling 30 days — that cannot be satisfied by engineering work.
+- **Flipkart** is technically compatible with the existing adapter contract (corrected finding — the Affiliate API is not feed-only), but is blocked by Flipkart's own Affiliate Policy, which explicitly excludes price-comparison sites from the standard program.
 
-**Requires technical design before implementation (if pursued):** Flipkart integration specifically would need a new provider sub-architecture (scheduled feed ingestion + local index) designed and reviewed before any code is written — this is bigger than "fill in the stub."
+This is a deliberate architectural/business decision, not an unfinished coding task.
+
+**Future activation conditions:** Amazon may be reconsidered only if PricePulse independently satisfies the Associates sales-volume prerequisite. Flipkart may be reconsidered only if a non-standard commercial/API relationship is obtained that explicitly permits price-comparison use. If either condition changes, the implementation is expected to be small: implement `searchProduct()` in the existing stub adapter, map its response into the existing normalized offer shape, add fixture-based adapter tests, and verify existing matching/quality/ranking behavior — no change to `comparison/**` is anticipated unless a concrete defect proves otherwise.
 
 **Can safely remain untouched:** the entire comparison engine, matching gates, quality scoring, ranking, trusted-retailer logic, and merchant URL resolver — all closed, tested, and should not be reopened absent a concrete new defect.
 
-There is currently no repo-documented "next phase" to simply pick up and start. The next decision is a business/ops one (Amazon sales volume, Flipkart terms confirmation), not an engineering one.
+There is currently no repo-documented "next phase" to simply pick up and start on the provider question — it is closed pending an external condition, not pending more engineering.
 
 ---
 
