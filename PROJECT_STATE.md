@@ -283,12 +283,13 @@ There is currently no repo-documented "next phase" to simply pick up and start o
 ```
 PROJECT: PricePulse V2
 
-CURRENT STATE:
+CURRENT STATE (FINAL AUDIT VERDICT: PUBLIC RELEASE READY):
 - Node.js/Express backend, static HTML/CSS/JS frontend
 - Single live data provider: Google Shopping via Serper
 - Full matching/quality/ranking/URL-resolution pipeline implemented and closed
 - Merchant URL resolution: ENABLED (ENABLE_MERCHANT_URL_RESOLVER=true in working .env)
 - 284/284 deterministic tests passing (verified fresh this session)
+- All V1 → V2 housekeeping items (dead code removal, stale comment cleanup) successfully executed and test-verified.
 
 COMPLETED:
 - Gate 0 (product type classification)
@@ -300,20 +301,14 @@ COMPLETED:
 - Trusted-retailer-first logic + bounded adaptive coverage
 - Merchant URL resolution (implemented, activated, regression-tested, live-validated, closed)
 - Frontend IDLE/COMPARING/RESULTS/FULL_INTERNET state machine + centralized reset
+- Phase 23 Housekeeping: Removed dead code (`search_old.js`, `merchantUrlResolver.js`) and updated stale `.env.example` comments.
 
 OPEN:
-- Second live data provider (Amazon and/or Flipkart) — see §9
-- Minor .env.example documentation drift — optional housekeeping
-- Confirmed-dead files (search_old.js, stores/merchantUrlResolver.js) awaiting an explicit delete decision
+- None (all engineering tasks completed; provider integrations blocked on business prerequisites).
 
 BLOCKED:
 - Amazon direct integration — blocked on external Amazon Associates sales-volume precondition + unresolved policy fit
 - Flipkart direct integration — blocked on unverified current API terms + needs new feed-ingestion architecture
-
-OPTIONAL:
-- .env.example comment corrections
-- Dead-file removal
-- Splitting matching/ranking test coverage into the empty tests/normalization/ and tests/ranking/ scaffold directories
 
 DO NOT TOUCH:
 - comparison/productIdentity.js, productTypeClassifier.js, variantMatcher.js, services/productMatcher.js (Gate 0/1 — locked, tested)

@@ -12,7 +12,7 @@ const { post } = require("./serperClient");
 
 const REQUEST_TIMEOUT_MS = 10000;
 
-async function searchShopping(query, { gl = "in", hl = "en", num = 15 } = {}) {
+async function searchShopping(query, { gl = "in", hl = "en", num = 40 } = {}) {
     const data = await post("/shopping", { q: query, gl, hl, num }, { timeoutMs: REQUEST_TIMEOUT_MS });
     return data.shopping || [];
 }

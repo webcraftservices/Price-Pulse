@@ -108,6 +108,7 @@ const FIXTURE_IPHONE15 = [
 const results = [];
 async function test(name, fn) {
     try {
+        require("../comparison/comparisonCache").clear();
         await fn();
         results.push({ name, pass: true });
         console.log(`PASS  ${name}`);
@@ -391,10 +392,12 @@ async function main() {
 
     console.log("\n=== TEST U: merchant URL resolver safety (Stage 2.3.1, Parts 15/20/21) ===");
     await test("U: allowlist enforced, domain-spoofing rejected, disabled-by-default is a safe no-op", async () => {
-        const { resolveDirectMerchantUrl, getMerchantDomain, belongsToDomain } = require(path.join(__dirname, "..", "services", "stores", "merchantUrlResolver"));
+        const { resolveDirectMerchantUrl } = require(path.join(__dirname, "..", "comparison", "urlResolver"));
+        const { getResolvableDomain } = require(path.join(__dirname, "..", "providers", "merchants", "merchantRegistry"));
+        const { belongsToDomain } = require(path.join(__dirname, "..", "utils", "url"));
 
-        assert.strictEqual(getMerchantDomain("Amazon.in"), "amazon.in", "known merchant should map to its domain");
-        assert.strictEqual(getMerchantDomain("Little Wish"), null, "unlisted merchant must not resolve to any domain");
+        assert.strictEqual(getResolvableDomain("Amazon.in"), "amazon.in", "known merchant should map to its domain");
+        assert.strictEqual(getResolvableDomain("Little Wish"), null, "unlisted merchant must not resolve to any domain");
 
         assert.strictEqual(belongsToDomain("https://amazon.in/dp/x", "amazon.in"), true);
         assert.strictEqual(belongsToDomain("https://myamazonfake.com/dp/x", "amazon.in"), false, "lookalike domain must be rejected");
@@ -408,7 +411,8 @@ async function main() {
 
     console.log("\n=== TEST V-AF: Stage 2.3.2 — direct merchant URL resolution ===");
     {
-        const { belongsToDomain, resolveDirectMerchantUrl } = require(path.join(__dirname, "..", "services", "stores", "merchantUrlResolver"));
+        const { belongsToDomain } = require(path.join(__dirname, "..", "utils", "url"));
+        const { resolveDirectMerchantUrl } = require(path.join(__dirname, "..", "comparison", "urlResolver"));
         const { computeMatchConfidence } = require(path.join(__dirname, "..", "services", "productMatcher"));
 
         await test("V: direct merchant URL preserved as isDirectMerchantUrl=true, isGoogleRedirect=false", async () => {
