@@ -34,6 +34,8 @@ function isEligibleForResults(offer) {
     return !offer.hardReject;
 }
 
+const { isNonCommerceDomain } = require("../utils/url");
+
 /**
  * Gate 2 — is this offer eligible to be crowned bestOffer/bestDirectOffer?
  * Strictly stronger than gate 1: must also clear the "strong" confidence
@@ -74,7 +76,8 @@ function isEligibleForComparison(offer) {
         offer.price !== null &&
         offer.availability !== "out_of_stock" &&
         !!offer.productUrl &&
-        offer.usableForBestOffer !== false
+        offer.usableForBestOffer !== false &&
+        !isNonCommerceDomain(offer.productUrl)
     );
 }
 

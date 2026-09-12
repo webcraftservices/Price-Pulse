@@ -2,16 +2,7 @@
  * Normalizes external seed candidates (AI organic URLs, User pasted URLs)
  * into the engine's internal NormalizedOffer contract.
  */
-const { isSafeExternalUrl } = require("../utils/url");
-
-const NON_COMMERCE_DOMAINS = new Set([
-    "youtube.com", "youtu.be",
-    "instagram.com",
-    "facebook.com", "fb.com",
-    "twitter.com", "x.com",
-    "tiktok.com", "pinterest.com",
-    "reddit.com"
-]);
+const { isSafeExternalUrl, isNonCommerceDomain } = require("../utils/url");
 
 function injectSeedCandidates(seedCandidates) {
     if (!Array.isArray(seedCandidates) || seedCandidates.length === 0) {
@@ -33,14 +24,7 @@ function injectSeedCandidates(seedCandidates) {
             const hostname = parsedUrl.hostname.replace(/^www\./, "");
 
             // Phase 27 Fix B: Filter out non-commerce social/content domains
-            let isNonCommerce = false;
-            for (const domain of NON_COMMERCE_DOMAINS) {
-                if (hostname === domain || hostname.endsWith(`.${domain}`)) {
-                    isNonCommerce = true;
-                    break;
-                }
-            }
-            if (isNonCommerce) continue;
+            if (isNonCommerceDomain(url)) continue;
 
 
             injected.push({

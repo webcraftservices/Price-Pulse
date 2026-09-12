@@ -121,6 +121,30 @@ function isPrivateOrLocalHost(url) {
     return false;
 }
 
+const NON_COMMERCE_DOMAINS = new Set([
+    "youtube.com", "youtu.be",
+    "instagram.com",
+    "facebook.com", "fb.com",
+    "twitter.com", "x.com",
+    "tiktok.com", "pinterest.com",
+    "reddit.com"
+]);
+
+function isNonCommerceDomain(url) {
+    let hostname;
+    try {
+        hostname = new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+        return false;
+    }
+    for (const domain of NON_COMMERCE_DOMAINS) {
+        if (hostname === domain || hostname.endsWith(`.${domain}`)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // A resolved URL is only trustworthy enough to hand to the user as a
 // "verified direct merchant URL" if it clears every basic safety check —
 // real http(s) protocol, not Google's own redirect host, and not an
@@ -131,4 +155,4 @@ function isSafeExternalUrl(url) {
     return hasSafeProtocol(url) && !isGoogleHost(url) && !isPrivateOrLocalHost(url);
 }
 
-module.exports = { isGoogleHost, hasSafeProtocol, getHostname, belongsToDomain, isPrivateOrLocalHost, isSafeExternalUrl };
+module.exports = { isGoogleHost, hasSafeProtocol, getHostname, belongsToDomain, isPrivateOrLocalHost, isSafeExternalUrl, NON_COMMERCE_DOMAINS, isNonCommerceDomain };
