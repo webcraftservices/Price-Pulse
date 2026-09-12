@@ -105,6 +105,7 @@ const CONDITION_WORDS = ["refurbished", "renewed", "used"];
 const CONDITION_PHRASES = ["pre owned", "preowned", "pre-owned", "open box", "openbox", "second hand", "secondhand"];
 const INSTALLMENT_WORDS = ["emi", "installment", "installments", "subscription"];
 const INSTALLMENT_PHRASES = ["per month", "/month", "down payment", "downpayment", "deposit only", "starting from", "starting at", "from rs", "from inr"];
+const RENTAL_WORDS = ["rent", "rental", "lease", "renting"];
 
 // Matches `words` as whole words only (\b-bounded — never a bare substring
 // of an unrelated word), then falls back to `phrases` as plain substring
@@ -213,6 +214,7 @@ function assessPriceOutlier(offer, otherClusterOffers) {
 const SIGNAL_WEIGHTS = {
     malformed_title: 0.35,
     used_or_refurbished: 0.3,
+    rental_or_service: 0.4,
     installment_or_partial_price: 0.4,
     extreme_price_outlier: 0.6,
     price_below_cluster: 0.25,
@@ -264,6 +266,12 @@ function evaluateOfferQuality(offer, otherIdentityValidOffers) {
         reasons.push("used_or_refurbished");
         score -= SIGNAL_WEIGHTS.used_or_refurbished;
     }
+
+    if (findKeywordSignal(normalized, RENTAL_WORDS, [])) {
+        reasons.push("rental_or_service");
+        score -= SIGNAL_WEIGHTS.rental_or_service;
+    }
+
     // Installment phrasing ("EMI", "/month") often includes a symbol
     // (₹, /) normalizeTitle would strip, so also check the raw lowercase
     // title, not only the normalized form.
