@@ -686,6 +686,7 @@
             storage: product.storage,
             color: product.color,
             category: product.category,
+            seedCandidates: data.searchResults,
           });
         }
         if (window.PricePulse && window.PricePulse.navigateTo) {

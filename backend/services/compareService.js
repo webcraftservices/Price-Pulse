@@ -177,6 +177,7 @@ function toFrontendOffer(offer, { sourceHost = null, isPossibleMatch = false } =
         offerQualityScore: typeof offer.offerQualityScore === "number" ? offer.offerQualityScore : 1,
         offerQualityReasons: offer.offerQualityReasons || [],
         usableForBestOffer: offer.usableForBestOffer !== false,
+        _candidateSource: offer._candidateSource || null,
     };
 }
 
@@ -303,7 +304,11 @@ async function compareProduct(url) {
     }
 
     const sourceHost = parsedUrl.hostname.replace(/^www\./, "");
-    return runComparison({ name: title, image }, { sourceHost });
+    return runComparison({
+        name: title,
+        image,
+        seedCandidates: [{ link: url, title }]
+    }, { sourceHost });
 }
 
 // Text-query variant: caller only knows a plain product name/description

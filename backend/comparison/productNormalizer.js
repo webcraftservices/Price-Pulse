@@ -44,6 +44,9 @@ function buildSearchQuery(product) {
     if (storage && !base.toLowerCase().includes(storage.toLowerCase())) extras.push(storage);
     if (ram && !base.toLowerCase().includes(ram.toLowerCase())) extras.push(ram);
     if (color && !base.toLowerCase().includes(color.toLowerCase())) extras.push(color);
+    if (product.aiClassifiedType && !base.toLowerCase().includes(product.aiClassifiedType.toLowerCase())) {
+        extras.push(product.aiClassifiedType);
+    }
 
     return [base, ...extras].join(" ").replace(/\s+/g, " ").trim();
 }

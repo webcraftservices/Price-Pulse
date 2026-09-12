@@ -102,6 +102,8 @@ const PRODUCT_CATEGORY_SIGNALS = [
     ["ram", ["ram module", "desktop ram", "laptop ram", "ddr4 ram", "ddr5 ram", "memory module", "memory kit"]],
     ["printer", ["printer", "inkjet printer", "laser printer"]],
     ["appliance", ["refrigerator", "washing machine", "microwave oven", "air conditioner", " ac unit", "dishwasher", "water purifier"]],
+    ["skincare", ["serum", "moisturizer", "cleanser", "toner", "sunscreen", "face wash", "face cream"]],
+    ["cosmetics", ["lipstick", "foundation", "concealer", "mascara", "eyeliner", "blush", "makeup"]],
     // Smartphone last — its signals are the broadest (bare "galaxy s"/"galaxy
     // a" product-line prefixes) and would otherwise shadow the more specific
     // categories above (e.g. "galaxy tab", "galaxy watch", "galaxy buds").

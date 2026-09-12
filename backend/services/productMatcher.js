@@ -43,6 +43,11 @@ const { classifyProductType, detectProductTypeConflict } = require("../compariso
 function evaluateProductIdentity(sourceProduct, candidateTitle) {
     const sourceName = sourceProduct.name || [sourceProduct.brand, sourceProduct.productName].filter(Boolean).join(" ");
     const requestedClass = classifyProductType(sourceName);
+
+    if (requestedClass.type === "unknown" && sourceProduct.aiClassifiedType) {
+        requestedClass.type = sourceProduct.aiClassifiedType;
+    }
+
     const candidateClass = classifyProductType(candidateTitle);
     const { conflict, reason } = detectProductTypeConflict(requestedClass, candidateClass);
 

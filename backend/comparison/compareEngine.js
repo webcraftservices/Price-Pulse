@@ -31,6 +31,7 @@ const { buildComparison, MATCH_CONFIDENCE_THRESHOLD, BEST_OFFER_MATCH_THRESHOLD 
 const { attachQualityScores } = require("./qualityScorer");
 const { attachOfferQuality } = require("./offerQuality");
 const { resolveDirectMerchantUrlDetailed, isEnabled: isMerchantResolverEnabled } = require("./urlResolver");
+const { injectSeedCandidates } = require("./seedCandidateInjector");
 const { CompareError } = require("../utils/errors");
 
 // Feature flag (spec Part 35): default OFF. Off = exactly one search query,
@@ -271,7 +272,7 @@ async function attemptSecondaryUrlResolution(scoredOffers, canonicalProduct, que
  * Returns { canonicalProduct, query, offers, possibleMatches, bestOffer,
  *           bestDirectOffer, savings, diagnostics }
  */
-async function runComparison(sourceProduct, { sourceHost = null } = {}) {
+async function runComparison(sourceProduct, { sourceHost = null, seedCandidates = [] } = {}) {
     const debug = process.env.DEBUG_COMPARE === "true";
 
     // PRODUCT IDENTIFICATION -> CANONICAL PRODUCT PROFILE
@@ -305,7 +306,8 @@ async function runComparison(sourceProduct, { sourceHost = null } = {}) {
     console.log(`[COMPARE] RAW SERPER RESULTS: ${rawOffers.length}`);
     console.log(`[COMPARE] NORMALIZED OFFERS: ${rawOffers.length}`);
 
-    if (rawOffers.length === 0) {
+    const hasSeeds = (sourceProduct.seedCandidates && sourceProduct.seedCandidates.length > 0) || (seedCandidates && seedCandidates.length > 0);
+    if (rawOffers.length === 0 && !hasSeeds) {
         throw new CompareError(
             "No comparable offers found for this product yet. Try a more specific product name or link.",
             404,
@@ -313,8 +315,16 @@ async function runComparison(sourceProduct, { sourceHost = null } = {}) {
         );
     }
 
+    // SEED CANDIDATE INJECTION
+    const injectedSeeds = injectSeedCandidates(sourceProduct.seedCandidates || seedCandidates);
+    if (injectedSeeds.length > 0) {
+        console.log(`[COMPARE] Injected ${injectedSeeds.length} seed candidates.`);
+        rawOffers.push(...injectedSeeds);
+    }
+
     // DEDUPLICATION
-    const dedupedOffers = deduplicateByMerchant(rawOffers);
+    let dedupedOffers = deduplicateByMerchant(rawOffers);
+    dedupedOffers = deduplicateByUrl(dedupedOffers);
     console.log(`[COMPARE] UNIQUE MERCHANTS: ${dedupedOffers.length} (${dedupedOffers.map((o) => o.store).join(", ")})`);
 
     // EXACT PRODUCT / VARIANT MATCHING

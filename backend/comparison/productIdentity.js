@@ -53,8 +53,10 @@ function extractCanonicalProduct(rawTitle) {
  * just fill gaps — don't let a cruder text-based parse override good data.
  */
 function canonicalizeProduct(sourceProduct) {
+    const aiClassifiedType = sourceProduct.aiClassifiedType || sourceProduct.category || null;
+
     if (sourceProduct.brand) {
-        const product = { ...sourceProduct };
+        const product = { ...sourceProduct, aiClassifiedType };
         // Phase 10 (Match Confidence & Variant Evidence Audit) fix: the
         // free-text branch below (extractCanonicalProduct, lines ~42-43)
         // has always kept productName/model in sync. This structured-input
@@ -94,6 +96,7 @@ function canonicalizeProduct(sourceProduct) {
         ...parsed,
         name: parsed.name, // use the cleaned title, not the raw scraped/typed one
         image: sourceProduct.image,
+        aiClassifiedType
     };
 }
 
