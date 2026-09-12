@@ -66,7 +66,7 @@
   // not transient comparison state.
   function resetComparisonState() {
     lastComparisonData = null;
-    delete resultsEl.dataset.cpMode;
+    resultsEl.dataset.cpMode = 'trusted';
     resultsEl.innerHTML = '';
     loadingEl.querySelectorAll('.cp-platform-dots span').forEach(dot => dot.classList.remove('scanning', 'done'));
     urlInput.value = '';
@@ -313,7 +313,10 @@
           </div>
         `;
       } else if (!showFullInternet) {
-        const count = trustedOffers.length;
+        // Phase 27 Fix D: the trusted-retailer frontend banner counts trusted
+        // possibleMatches as if they were confident trusted offers. We only
+        // want to count confident results in the banner.
+        const count = confidentResults.length;
         html += `
           <div class="cp-mode-banner">
             Showing ${count} trusted retailer${count !== 1 ? 's' : ''} first. Prices may be lower elsewhere.
@@ -502,7 +505,7 @@
     // Phase 8 — always start a fresh comparison in trusted mode; a
     // previous "Search Full Internet" click must not carry over to a new
     // product search.
-    delete resultsEl.dataset.cpMode;
+    resultsEl.dataset.cpMode = 'trusted';
     lastComparisonData = null;
     setState(COMPARE_STATE.COMPARING);
     loadingEl.querySelector('p').textContent = initialLabel || 'Fetching product details…';

@@ -4,6 +4,15 @@
  */
 const { isSafeExternalUrl } = require("../utils/url");
 
+const NON_COMMERCE_DOMAINS = new Set([
+    "youtube.com", "youtu.be",
+    "instagram.com",
+    "facebook.com", "fb.com",
+    "twitter.com", "x.com",
+    "tiktok.com", "pinterest.com",
+    "reddit.com"
+]);
+
 function injectSeedCandidates(seedCandidates) {
     if (!Array.isArray(seedCandidates) || seedCandidates.length === 0) {
         return [];
@@ -22,6 +31,17 @@ function injectSeedCandidates(seedCandidates) {
         try {
             const parsedUrl = new URL(url);
             const hostname = parsedUrl.hostname.replace(/^www\./, "");
+
+            // Phase 27 Fix B: Filter out non-commerce social/content domains
+            let isNonCommerce = false;
+            for (const domain of NON_COMMERCE_DOMAINS) {
+                if (hostname === domain || hostname.endsWith(`.${domain}`)) {
+                    isNonCommerce = true;
+                    break;
+                }
+            }
+            if (isNonCommerce) continue;
+
 
             injected.push({
                 productUrl: url,

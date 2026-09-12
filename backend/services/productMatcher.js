@@ -133,6 +133,26 @@ function buildDigitGroupMap(tokens) {
     return map;
 }
 
+// Phase 27 (AI Discovery) — Fix A helper: extracts purely alphabetic words
+// that aren't the brand, the product type/category, or common noisy descriptors.
+// This allows entirely word-based model families ("Twist Go" vs "ColorFit Elevate")
+// to be distinguished deterministically without maintaining a broad blacklist.
+function extractAlphabeticFamilyTokens(text, brand) {
+    const typeInfo = classifyProductType(text);
+    let norm = normalizeTitle(text);
+    if (brand) {
+        const escapedBrand = normalizeTitle(brand).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        norm = norm.replace(new RegExp(`\\b${escapedBrand}\\b`, "g"), " ");
+    }
+    if (typeInfo.matchedSignal) {
+        const escapedSignal = normalizeTitle(typeInfo.matchedSignal).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        norm = norm.replace(new RegExp(`\\b${escapedSignal}\\b`, "g"), " ");
+    }
+    const tokens = tokenize(norm);
+    const exclude = new Set(["cm","mm","gb","tb","mb","hz","inch","inches","for","with","and","the"]);
+    return new Set(tokens.filter((t) => /^[a-z]{2,}$/.test(t) && !exclude.has(t)));
+}
+
 function evaluateVariantIdentity(sourceProduct, candidateTitle) {
     const sourceName = sourceProduct.name || [sourceProduct.brand, sourceProduct.productName].filter(Boolean).join(" ");
     const sourceIdentityText = [sourceProduct.model, sourceProduct.productName, sourceName].filter(Boolean).join(" ");
@@ -324,6 +344,27 @@ function evaluateVariantIdentity(sourceProduct, candidateTitle) {
                 primaryIssue: "screen_size_mismatch",
                 reason: `SCREEN_SIZE_MISMATCH: requested ${sourceSize}in, candidate ${candidateSize}in`,
             };
+        }
+    }
+
+    // 8) Phase 27 (AI Discovery) — explicit purely-alphabetic model family conflict.
+    //    Fixes "Noise ColorFit Elevate" matching "Noise Twist Go" because neither
+    //    uses numbers or standard variant suffixes. If the source's model contains
+    //    unique alphabetic words (after stripping brand/category), a candidate
+    //    MUST share at least one of them. A candidate that shares nothing is a
+    //    completely different product line.
+    const sourceAlphabeticTokens = extractAlphabeticFamilyTokens(sourceIdentityText, sourceProduct.brand);
+    if (sourceAlphabeticTokens.size > 0) {
+        const candidateAlphabeticTokens = extractAlphabeticFamilyTokens(candidateTitle, sourceProduct.brand);
+        if (candidateAlphabeticTokens.size > 0) {
+            const hasOverlap = [...sourceAlphabeticTokens].some((t) => candidateAlphabeticTokens.has(t));
+            if (!hasOverlap) {
+                return {
+                    hardReject: true,
+                    primaryIssue: "model_family_mismatch",
+                    reason: `MODEL_FAMILY_MISMATCH: requested family [${[...sourceAlphabeticTokens].join(",")}], candidate family [${[...candidateAlphabeticTokens].join(",")}]`,
+                };
+            }
         }
     }
 
