@@ -2728,6 +2728,7 @@ body {
 .cp-merchant-list { display: flex; flex-direction: column; gap: 10px; }
 
 .cp-merchant-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2810,6 +2811,9 @@ body {
 .cp-tag.google-redirect { background: rgba(18, 23, 46, 0.06); color: var(--home-gray); }
 .cp-tag.good-match { background: rgba(124, 58, 237, 0.1); color: var(--home-purple); }
 .cp-tag.uncertain-match { background: rgba(240, 69, 94, 0.1); color: #d9304a; }
+.cp-tag.provenance { background: rgba(59, 130, 246, 0.1); color: var(--home-blue); }
+.cp-tag.trust-verified { background: rgba(34, 197, 139, 0.12); color: #1a9d6f; }
+.cp-tag.suspicious { background: rgba(240, 69, 94, 0.12); color: #d9304a; }
 
 .cp-merchant-cta {
   flex-shrink: 0;
@@ -2818,8 +2822,63 @@ body {
   color: var(--home-purple);
   white-space: nowrap;
   text-align: right;
+  text-decoration: none;
+}
+.cp-merchant-cta.stretched-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 .cp-merchant-card.is-best .cp-merchant-cta { color: var(--home-purple); }
+
+/* ----- Phase 33: Evidence Panel ----- */
+.cp-evidence-toggle {
+  position: relative;
+  z-index: 2;
+  background: none;
+  border: none;
+  color: var(--home-gray);
+  font-size: 0.72rem;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  padding: 4px 0;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cp-evidence-toggle:hover {
+  color: var(--home-purple);
+}
+.cp-evidence-panel {
+  position: relative;
+  z-index: 2;
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(18, 23, 46, 0.02);
+  border: 1px solid rgba(18, 23, 46, 0.06);
+  border-radius: var(--r-md);
+  font-size: 0.72rem;
+  color: var(--home-navy);
+}
+.cp-evidence-row {
+  display: flex;
+  margin-bottom: 4px;
+}
+.cp-evidence-row:last-child {
+  margin-bottom: 0;
+}
+.cp-ev-label {
+  font-weight: var(--weight-bold);
+  width: 85px;
+  flex-shrink: 0;
+  color: var(--home-gray);
+}
+.cp-ev-val {
+  flex: 1;
+  word-break: break-word;
+}
 
 /* ----- Phase 8: trusted / full-internet mode ----- */
 .cp-mode-banner {

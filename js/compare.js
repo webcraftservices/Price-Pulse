@@ -208,17 +208,73 @@
     const isBest = !!opts.isBest;
     const bestPrice = opts.bestPrice || null;
     const priceLabel = item.availability === 'out_of_stock' ? 'Price unavailable' : formatPrice(item.price);
-    const tag = item.url ? 'a' : 'div';
-    const hrefAttr = item.url ? `href="${item.url}" target="_blank" rel="noopener"` : '';
+
+    // Phase 33: Evidence Mapping
+    const trustBadge = item.isTrustedRetailer ? `<span class="cp-tag trust-verified"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:2px;vertical-align:-2px"><path d="M20 6L9 17l-5-5"/></svg>Verified Retailer</span>` : '';
+
+    let urlTag = '';
+    if (item.urlResolutionStatus === 'resolved' && item.isDirectMerchantUrl) {
+      urlTag = `<span class="cp-tag provenance">Resolved Direct Link</span>`;
+    } else if (item.isGoogleRedirect && item.urlResolutionStatus === 'failed') {
+      urlTag = `<span class="cp-tag provenance">Unverified Google Redirect</span>`;
+    } else if (item.isDirectMerchantUrl) {
+      urlTag = `<span class="cp-tag provenance">Direct Merchant Link</span>`;
+    } else if (item.isGoogleRedirect) {
+      urlTag = `<span class="cp-tag google-redirect">Google Shopping Link</span>`;
+    }
+
     const badge = confidenceBadge(item);
     const diff = (!isBest && bestPrice && item.price > bestPrice && item.availability !== 'out_of_stock')
       ? `<div class="cp-price-diff">${formatPrice(item.price - bestPrice)} more than best price</div>` : '';
 
+    let suspiciousWarning = '';
+    if (item.offerQuality === 'suspicious') {
+      const reasons = Array.isArray(item.offerQualityReasons) ? item.offerQualityReasons.join(', ') : '';
+      suspiciousWarning = `<span class="cp-tag suspicious"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;margin-right:2px;vertical-align:-2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4m0 4h.01"/></svg>⚠ Suspicious Offer ${reasons ? `· ${reasons}` : ''}</span>`;
+    }
+
+    const panelId = `evidence-${Math.random().toString(36).substr(2, 9)}`;
+
+    const formatIdentity = (it) => {
+        if (!it.matchConfidence && it.matchConfidence !== 0) return 'Not reported';
+        let matchText = 'Possible';
+        if (it.matchConfidence >= 0.90) matchText = 'Strong';
+        else if (it.matchConfidence >= 0.75) matchText = 'Good';
+        return `${matchText} · ${Math.round(it.matchConfidence * 100)}%`;
+    };
+
+    const formatProvenance = (src) => {
+        const map = {
+            'google_shopping': 'Google Shopping',
+            'ai_web_discovery': 'AI discovery',
+            'user_url': 'Direct link provided',
+            'retailer_discovery': 'Retailer discovery',
+            'manufacturer': 'Manufacturer'
+        };
+        return map[src] || (src ? src : 'Discovery source unavailable');
+    };
+
+    const formatUrlState = (it) => {
+        if (it.urlResolutionStatus === 'resolved' && it.isDirectMerchantUrl) return 'Resolved Direct Link';
+        if (it.isGoogleRedirect && it.urlResolutionStatus === 'failed') return 'Unverified Google Redirect';
+        if (it.isDirectMerchantUrl) return 'Direct Merchant Link';
+        if (it.isGoogleRedirect) return 'Google Shopping Link';
+        return 'Not reported';
+    };
+
+    const formatQuality = (it) => {
+        if (it.offerQuality === 'suspicious') {
+            const reasons = Array.isArray(it.offerQualityReasons) ? it.offerQualityReasons.join(', ') : '';
+            return `Suspicious Offer ${reasons ? `· ${reasons}` : ''}`;
+        }
+        return it.offerQuality === 'trusted' ? 'Trusted' : (it.offerQuality || 'Not reported');
+    };
+
     return `
-      <${tag} ${hrefAttr} class="cp-merchant-card ${isBest ? 'is-best' : ''} ${item.isPossibleMatch ? 'is-possible' : ''} ${!item.url ? 'no-link' : ''}" style="animation-delay:${Math.min(i * 0.06, 0.4)}s">
+      <div class="cp-merchant-card ${isBest ? 'is-best' : ''} ${item.isPossibleMatch ? 'is-possible' : ''} ${!item.url ? 'no-link' : ''}" style="animation-delay:${Math.min(i * 0.06, 0.4)}s">
         <div class="cp-merchant-badge ${item.color || 'default'}">${escapeHtml(item.platform).charAt(0)}</div>
         <div class="cp-merchant-info">
-          <div class="cp-merchant-name">${escapeHtml(item.platform)}${item.isSource ? ' <span class="cp-tag other-seller">Your link</span>' : ''}${!item.isMajorRetailer && !item.isSource ? ' <span class="cp-tag other-seller">Other seller</span>' : ''}</div>
+          <div class="cp-merchant-name">${escapeHtml(item.platform)}${item.isSource ? ' <span class="cp-tag other-seller">Your link</span>' : ''}${!item.isMajorRetailer && !item.isSource ? ' <span class="cp-tag other-seller">Other seller</span>' : ''} ${trustBadge}</div>
           ${item.title && !item.isSource ? `<div class="cp-merchant-title">${escapeHtml(item.title)}</div>` : ''}
           <div class="cp-merchant-price-row">
             <span class="cp-merchant-price">${priceLabel}</span>
@@ -229,11 +285,25 @@
           <div class="cp-tag-row">
             ${availabilityTag(item)}
             ${badge ? `<span class="cp-tag ${badge.cls}">${badge.text}</span>` : ''}
-            ${item.isGoogleRedirect && item.url ? `<span class="cp-tag google-redirect">via Google Shopping</span>` : ''}
+            ${urlTag}
+          </div>
+          ${suspiciousWarning ? `<div style="margin-top:6px">${suspiciousWarning}</div>` : ''}
+
+          <button type="button" class="cp-evidence-toggle" aria-expanded="false" aria-controls="${panelId}">
+            Inspect Evidence <span class="cp-evidence-caret">▾</span>
+          </button>
+          <div id="${panelId}" class="cp-evidence-panel hidden">
+            <div class="cp-evidence-row"><span class="cp-ev-label">Identity match:</span> <span class="cp-ev-val">${formatIdentity(item)}</span></div>
+            <div class="cp-evidence-row"><span class="cp-ev-label">Merchant:</span> <span class="cp-ev-val">${escapeHtml(item.platform) || 'Not reported'}</span></div>
+            <div class="cp-evidence-row"><span class="cp-ev-label">Price:</span> <span class="cp-ev-val">${item.price ? formatPrice(item.price) : 'Not reported'}</span></div>
+            <div class="cp-evidence-row"><span class="cp-ev-label">Provenance:</span> <span class="cp-ev-val">${escapeHtml(formatProvenance(item._candidateSource))}</span></div>
+            <div class="cp-evidence-row"><span class="cp-ev-label">URL:</span> <span class="cp-ev-val">${formatUrlState(item)}</span></div>
+            <div class="cp-evidence-row"><span class="cp-ev-label">Trust:</span> <span class="cp-ev-val">${item.isTrustedRetailer ? 'Verified Retailer' : 'Not reported'}</span></div>
+            <div class="cp-evidence-row"><span class="cp-ev-label">Quality:</span> <span class="cp-ev-val">${escapeHtml(formatQuality(item))}</span></div>
           </div>
         </div>
-        <span class="cp-merchant-cta">${actionLabel(item, isBest)}</span>
-      </${tag}>
+        ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener" class="cp-merchant-cta stretched-link">${actionLabel(item, isBest)}</a>` : `<span class="cp-merchant-cta">${actionLabel(item, isBest)}</span>`}
+      </div>
     `;
   }
 
@@ -461,6 +531,24 @@
 
     resultsEl.innerHTML = html;
     resultsEl.classList.remove('hidden');
+
+    // Phase 33: Evidence toggles
+    resultsEl.querySelectorAll('.cp-evidence-toggle').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const panelId = btn.getAttribute('aria-controls');
+        const panel = document.getElementById(panelId);
+        if (panel) {
+          const isHidden = panel.classList.contains('hidden');
+          panel.classList.toggle('hidden', !isHidden);
+          btn.setAttribute('aria-expanded', String(isHidden));
+
+          const caret = btn.querySelector('.cp-evidence-caret');
+          if (caret) {
+            caret.textContent = isHidden ? '▴' : '▾';
+          }
+        }
+      });
+    });
 
     // Phase 8 — mode toggle: re-renders the SAME already-fetched `data`
     // with a different resultsEl.dataset.cpMode, never a new API call
