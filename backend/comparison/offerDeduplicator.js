@@ -23,13 +23,34 @@
 /** Keeps only the top (first-seen) listing per store. Not a filter —
  * every distinct store seen in `offers` is kept. */
 function deduplicateByMerchant(offers) {
-    const seenStores = new Set();
+    const storeMap = new Map();
     const deduped = [];
     for (const offer of offers) {
         const key = (offer.store || offer._hostname || "").toLowerCase();
-        if (seenStores.has(key)) continue;
-        seenStores.add(key);
-        deduped.push(offer);
+        if (!storeMap.has(key)) {
+            storeMap.set(key, offer);
+            deduped.push(offer);
+        } else {
+            const existing = storeMap.get(key);
+            // Identity Safety: We MUST NOT blindly merge URLs between a seed and a Google offer,
+            // because the seed might point to a completely different product (e.g. Pixel 10 Pro XL vs Pixel 10 Pro).
+            // If they collide on the same store, we prioritize the rich Google Shopping offer (which has a price)
+            // over the unpriced seed. The Google offer will have its redirect URL safely resolved later by the urlResolver.
+
+            const existingIsSeed = existing._candidateSource === "seed_injection";
+            const offerIsSeed = offer._candidateSource === "seed_injection";
+
+            // If the existing offer is a seed, and the new offer is a Google offer, replace the seed.
+            if (existingIsSeed && !offerIsSeed) {
+                storeMap.set(key, offer);
+                const idx = deduped.indexOf(existing);
+                if (idx !== -1) {
+                    deduped[idx] = offer;
+                }
+            }
+            // If Google came first, and seed came second (!existingIsSeed && offerIsSeed), we ignore the seed.
+            // If both are Google or both are seeds, we keep the first one seen (original behavior).
+        }
     }
     return deduped;
 }
