@@ -346,8 +346,10 @@
     // a cheaper Google Shopping redirect never auto-becomes the recommendation
     // just for being cheaper. Falls back to bestOffer only when no direct
     // offer exists at all. In trusted mode, use the trusted-pool equivalents.
-    const primaryBest = showFullInternet ? (bestDirectOffer || bestOffer) : (bestTrustedDirectOffer || bestTrustedOffer);
-    const hasCheaperGoogleAlternative = showFullInternet && !!(bestDirectOffer && bestOffer && bestOffer.url !== bestDirectOffer.url && bestOffer.price < bestDirectOffer.price);
+    const activeBest = showFullInternet ? bestOffer : bestTrustedOffer;
+    const activeDirect = showFullInternet ? bestDirectOffer : bestTrustedDirectOffer;
+    const primaryBest = activeDirect || activeBest;
+    const hasCheaperGoogleAlternative = !!(activeDirect && activeBest && activeBest.url !== activeDirect.url && activeBest.price < activeDirect.price);
     const savings = showFullInternet ? data.savings : data.trustedSavings;
 
     const allResults = showFullInternet ? (data.results || []) : trustedOffers;
@@ -412,8 +414,8 @@
           </div>
           ${primaryBest.url ? `<a href="${primaryBest.url}" target="_blank" rel="noopener" class="cp-best-cta">${isDirectLink ? 'View Deal' : 'View on Google Shopping'}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>` : ''}
-          ${hasCheaperGoogleAlternative ? `<div class="cp-google-alt-note">Google Shopping shows ${formatPrice(bestOffer.price)} on ${escapeHtml(bestOffer.platform)}, but no verified direct link was found for it.</div>` : ''}
-          ${!showFullInternet && trustedAvailable && bestOffer && bestOffer.price < primaryBest.price ? `<div class="cp-google-alt-note">A lower price (${formatPrice(bestOffer.price)} on ${escapeHtml(bestOffer.platform)}) was found across the wider internet — not a trusted retailer.</div>` : ''}
+          ${hasCheaperGoogleAlternative ? `<div class="cp-google-alt-note">Google Shopping shows ${formatPrice(activeBest.price)} on ${escapeHtml(activeBest.platform)}, but no verified direct link was found for it.</div>` : ''}
+          ${!showFullInternet && trustedAvailable && bestOffer && bestOffer.price < primaryBest.price && !bestOffer.isTrustedRetailer ? `<div class="cp-google-alt-note">A lower price (${formatPrice(bestOffer.price)} on ${escapeHtml(bestOffer.platform)}) was found across the wider internet — not a trusted retailer.</div>` : ''}
         </div>
       `;
 
