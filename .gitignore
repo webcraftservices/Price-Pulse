@@ -11,3 +11,8 @@ node_modules/
 # cleaned up after each request; ignored regardless so an upload can never
 # accidentally end up committed if cleanup is ever skipped or bypassed.
 backend/uploads/
+
+# Prisma generated client (Phase 35A)
+# prisma/schema.prisma and prisma/migrations/ ARE tracked in git.
+# The generated client lives in node_modules/@prisma/client (already ignored above).
+# If you use a custom output path in schema.prisma, ignore that path here too.

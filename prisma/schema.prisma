@@ -1,0 +1,39 @@
+// Prisma schema — PricePulse Phase 35A
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Supabase-hosted PostgreSQL.
+  // DATABASE_URL must be set in backend/.env (see backend/.env.example).
+  // For production, use the Supabase pooler connection string (pgBouncer).
+  // Moving from Supabase Free → Pro → higher tiers requires only a
+  // DATABASE_URL change — no model or identity changes.
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Phase 35A: User ─────────────────────────────────────────────────────────
+//
+// Identity invariant (must remain stable forever):
+//   Supabase Auth UUID === JWT.sub === User.id
+//
+// User.id is set ONLY from the verified Supabase JWT.sub — never generated
+// by Prisma (@default(uuid()) is intentionally absent). This ensures a
+// single canonical identity chain without a mapping table.
+//
+// Future phases may add relations to this model, for example:
+//   Subscription   (one-to-one)
+//   Alert          (one-to-many)
+//   BillingRecord  (one-to-many)
+// All such relations will use User.id as the stable foreign key.
+// Moving to Supabase Pro or a higher plan does not change this model.
+//
+model User {
+  id        String   @id
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -13,6 +13,7 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const compareRoute = require("./routes/compare");
 const compareTextRoute = require("./routes/compareText");
 const imageSearchRoute = require("./routes/imageSearch");
+const authRoute = require("./routes/auth"); // Phase 35A
 const express = require("express");
 const cors = require("cors");
 
@@ -42,6 +43,7 @@ app.get("/api/health", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+app.use("/api/auth", authRoute);   // Phase 35A — must precede error handler
 app.use("/api/compare", compareRoute);
 app.use("/api/compare-text", compareTextRoute);
 app.use("/api/search-image", imageSearchRoute);
