@@ -8,5 +8,6 @@ module.exports = {
     "**/auth/phase35a.auth.test.js",  // Phase 35A
     "**/alerts/phase35b.alertCrud.test.js", // Phase 35B
     "**/alerts/phase35c.alertEvaluation.test.js", // Phase 35C
+    "**/alerts/phase35d.batchEvaluation.test.js", // Phase 35D
   ]
 };
