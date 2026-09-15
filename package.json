@@ -21,7 +21,8 @@
     "express": "^5.2.1",
     "jose": "^4.15.9",
     "multer": "^2.2.0",
-    "openai": "^7.3.0"
+    "openai": "^7.3.0",
+    "resend": "^6.28.1"
   },
   "devDependencies": {
     "jest": "^29.7.0",
