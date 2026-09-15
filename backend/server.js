@@ -14,6 +14,7 @@ const compareRoute = require("./routes/compare");
 const compareTextRoute = require("./routes/compareText");
 const imageSearchRoute = require("./routes/imageSearch");
 const authRoute = require("./routes/auth"); // Phase 35A
+const alertsRoute = require("./routes/alerts"); // Phase 35B
 const express = require("express");
 const cors = require("cors");
 
@@ -44,6 +45,7 @@ app.get("/api/health", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.use("/api/auth", authRoute);   // Phase 35A — must precede error handler
+app.use("/api/alerts", alertsRoute); // Phase 35B
 app.use("/api/compare", compareRoute);
 app.use("/api/compare-text", compareTextRoute);
 app.use("/api/search-image", imageSearchRoute);

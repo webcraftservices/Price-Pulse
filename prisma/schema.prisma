@@ -36,4 +36,39 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  priceAlerts PriceAlert[]
+}
+
+// ── Phase 35B: PriceAlert ───────────────────────────────────────────────────
+//
+// Represents a user's intent to monitor a specific product's price.
+// Ownership is strictly tied to User.id (which is JWT.sub).
+//
+enum PriceContext {
+  FULL_INTERNET
+  TRUSTED_ONLY
+}
+
+enum AlertStatus {
+  ACTIVE
+  PAUSED
+}
+
+model PriceAlert {
+  id                 String       @id @default(uuid())
+  userId             String
+  canonicalProduct   Json
+  targetPrice        Decimal
+  priceContext       PriceContext
+  status             AlertStatus  @default(ACTIVE)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  lastCheckedAt      DateTime?
+  lastNotifiedPrice  Decimal?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
 }

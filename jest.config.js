@@ -6,5 +6,6 @@ module.exports = {
     "**/phase27.test.js",
     "**/phase32ProvenanceAudit.test.js",
     "**/auth/phase35a.auth.test.js",  // Phase 35A
+    "**/alerts/phase35b.alertCrud.test.js", // Phase 35B
   ]
 };
