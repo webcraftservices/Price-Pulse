@@ -1,12 +1,50 @@
 'use strict';
 
 const express = require('express');
+const crypto = require('crypto');
 const { authenticate } = require('../middleware/auth');
 const alertService = require('../services/alertService');
+const batchAlertEvaluator = require('../services/batchAlertEvaluator');
 
 const router = express.Router();
 
-// All alert routes require authentication
+/**
+ * POST /api/alerts/internal/evaluate-batch
+ * Internal trigger endpoint for evaluating all active alerts.
+ * Protected by CRON_SECRET, bypassing JWT authentication.
+ */
+router.post('/internal/evaluate-batch', async (req, res, next) => {
+  try {
+    const cronSecret = process.env.CRON_SECRET;
+
+    // Fail closed if server is misconfigured
+    if (!cronSecret) {
+      return res.status(503).json({ error: 'Service Unavailable: Missing configuration' });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const providedSecret = authHeader.substring(7);
+
+    const expectedBuffer = Buffer.from(cronSecret);
+    const providedBuffer = Buffer.from(providedSecret);
+
+    if (expectedBuffer.length !== providedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const aggregate = await batchAlertEvaluator.evaluateAllActiveAlerts();
+    return res.status(200).json(aggregate);
+  } catch (err) {
+    console.error('[alerts] Error in batch evaluation trigger:', err.message);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// All subsequent alert routes require user JWT authentication
 router.use(authenticate);
 
 /**
